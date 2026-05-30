@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "dgSpecHash": "AYyYm6Rr30g=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\GEFEH\\source\\projects\\AzotSerializer\\CodeGeneration\\CodeGeneration.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\GEFEH\\.nuget\\packages\\microsoft.codeanalysis.analyzers\\5.3.0\\microsoft.codeanalysis.analyzers.5.3.0.nupkg.sha512",
+    "C:\\Users\\GEFEH\\.nuget\\packages\\microsoft.codeanalysis.common\\5.3.0\\microsoft.codeanalysis.common.5.3.0.nupkg.sha512",
+    "C:\\Users\\GEFEH\\.nuget\\packages\\microsoft.codeanalysis.csharp\\5.3.0\\microsoft.codeanalysis.csharp.5.3.0.nupkg.sha512"
+  ],
+  "logs": []
+}

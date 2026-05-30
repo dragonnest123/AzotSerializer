@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="CodeGeneration/CodeGeneration.csproj" />
+  <Project Path="Experimental/Experimental.csproj" />
+  <Project Path="Serialization/Serialization.csproj" />
+</Solution>

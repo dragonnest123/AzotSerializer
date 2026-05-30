@@ -1,0 +1,11 @@
+C:\Users\GEFEH\source\projects\AzotSerializer\Serialization\bin\Debug\net10.0\Serialization.deps.json
+C:\Users\GEFEH\source\projects\AzotSerializer\Serialization\bin\Debug\net10.0\Serialization.dll
+C:\Users\GEFEH\source\projects\AzotSerializer\Serialization\bin\Debug\net10.0\Serialization.pdb
+C:\Users\GEFEH\source\projects\AzotSerializer\Serialization\obj\Debug\net10.0\Serialization.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\GEFEH\source\projects\AzotSerializer\Serialization\obj\Debug\net10.0\Serialization.AssemblyInfoInputs.cache
+C:\Users\GEFEH\source\projects\AzotSerializer\Serialization\obj\Debug\net10.0\Serialization.AssemblyInfo.cs
+C:\Users\GEFEH\source\projects\AzotSerializer\Serialization\obj\Debug\net10.0\Serialization.csproj.CoreCompileInputs.cache
+C:\Users\GEFEH\source\projects\AzotSerializer\Serialization\obj\Debug\net10.0\Serialization.dll
+C:\Users\GEFEH\source\projects\AzotSerializer\Serialization\obj\Debug\net10.0\refint\Serialization.dll
+C:\Users\GEFEH\source\projects\AzotSerializer\Serialization\obj\Debug\net10.0\Serialization.pdb
+C:\Users\GEFEH\source\projects\AzotSerializer\Serialization\obj\Debug\net10.0\ref\Serialization.dll
