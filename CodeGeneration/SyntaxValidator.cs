@@ -1,10 +1,11 @@
+using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace AzotSerializer;
 
-public static class SyntaxValidator
+internal static class SyntaxValidator
 {
     public static bool SyntaxIsValid(
         TypeDeclarationSyntax typeSyntax,

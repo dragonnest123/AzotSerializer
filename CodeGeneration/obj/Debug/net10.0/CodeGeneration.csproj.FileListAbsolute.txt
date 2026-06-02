@@ -10,3 +10,4 @@ C:\Users\GEFEH\source\projects\AzotSerializer\CodeGeneration\obj\Debug\net10.0\C
 C:\Users\GEFEH\source\projects\AzotSerializer\CodeGeneration\obj\Debug\net10.0\refint\CodeGeneration.dll
 C:\Users\GEFEH\source\projects\AzotSerializer\CodeGeneration\obj\Debug\net10.0\CodeGeneration.pdb
 C:\Users\GEFEH\source\projects\AzotSerializer\CodeGeneration\obj\Debug\net10.0\ref\CodeGeneration.dll
+C:\Users\GEFEH\source\projects\AzotSerializer\CodeGeneration\obj\Debug\net10.0\CodeGeneration.sourcelink.json

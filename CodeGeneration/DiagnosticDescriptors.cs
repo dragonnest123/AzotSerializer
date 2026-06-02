@@ -2,7 +2,7 @@ using Microsoft.CodeAnalysis;
 
 namespace AzotSerializer;
 
-public class DiagnosticDescriptors
+internal class DiagnosticDescriptors
 {
     private const string Category = "Generation";
     

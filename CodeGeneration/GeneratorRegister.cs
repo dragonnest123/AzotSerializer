@@ -4,9 +4,9 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace AzotSerializer;
 
 [Generator(LanguageNames.CSharp)]
-public class GeneratorRegister : IIncrementalGenerator
+internal class GeneratorRegister : IIncrementalGenerator
 {
-    private const string MetadataAttributeName = "Serialization.ByteSerializable";
+    private const string MetadataAttributeName = "Serialization.ByteSerializableAttribute";
     
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
@@ -16,6 +16,7 @@ public class GeneratorRegister : IIncrementalGenerator
             transform: static (context, ct) => (TypeDeclarationSyntax)context.TargetNode);
         
         var source = typeDeclarations.Combine(context.CompilationProvider);
+        
         context.RegisterSourceOutput(source, static (context, source) =>
         {
             SerializationGenerator.Generate(source.Left, source.Right, context);

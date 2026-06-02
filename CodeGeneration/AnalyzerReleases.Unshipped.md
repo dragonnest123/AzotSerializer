@@ -5,5 +5,5 @@
 
 | Rule ID    | Category   | Severity | Notes                 |
 |------------|------------|----------|-----------------------|
-AZOTGEN002 | Generation | Error | DiagnosticDescriptors
+| AZOTGEN002 | Generation | Error    | DiagnosticDescriptors |
 | AZOTGEN001 | Generation | Error    | DiagnosticDescriptors |

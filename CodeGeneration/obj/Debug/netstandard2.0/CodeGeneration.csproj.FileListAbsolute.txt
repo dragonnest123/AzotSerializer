@@ -1,0 +1,11 @@
+C:\Users\GEFEH\source\projects\AzotSerializer\CodeGeneration\bin\Debug\netstandard2.0\CodeGeneration.deps.json
+C:\Users\GEFEH\source\projects\AzotSerializer\CodeGeneration\bin\Debug\netstandard2.0\CodeGeneration.dll
+C:\Users\GEFEH\source\projects\AzotSerializer\CodeGeneration\bin\Debug\netstandard2.0\CodeGeneration.pdb
+C:\Users\GEFEH\source\projects\AzotSerializer\CodeGeneration\obj\Debug\netstandard2.0\CodeGeneration.csproj.AssemblyReference.cache
+C:\Users\GEFEH\source\projects\AzotSerializer\CodeGeneration\obj\Debug\netstandard2.0\CodeGeneration.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\GEFEH\source\projects\AzotSerializer\CodeGeneration\obj\Debug\netstandard2.0\CodeGeneration.AssemblyInfoInputs.cache
+C:\Users\GEFEH\source\projects\AzotSerializer\CodeGeneration\obj\Debug\netstandard2.0\CodeGeneration.AssemblyInfo.cs
+C:\Users\GEFEH\source\projects\AzotSerializer\CodeGeneration\obj\Debug\netstandard2.0\CodeGeneration.csproj.CoreCompileInputs.cache
+C:\Users\GEFEH\source\projects\AzotSerializer\CodeGeneration\obj\Debug\netstandard2.0\CodeGeneration.sourcelink.json
+C:\Users\GEFEH\source\projects\AzotSerializer\CodeGeneration\obj\Debug\netstandard2.0\CodeGeneration.dll
+C:\Users\GEFEH\source\projects\AzotSerializer\CodeGeneration\obj\Debug\netstandard2.0\CodeGeneration.pdb
