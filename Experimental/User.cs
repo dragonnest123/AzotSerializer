@@ -2,19 +2,17 @@ using Serialization;
 
 namespace Experimental;
 
-
-public class User
+[ByteSerializable]
+public partial class User
 {
-    [ByteSerializable]
-    public partial class UserData
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public string Email { get; set; }
+
+    public User(int id, string name, string email)
     {
         
     }
-    
-    public Guid Id { get; set; }
-    public UserData Data { get; set; }
-    public string Name { get; set; }
-    public string Email { get; set; }
 
     public void Login()
     {
