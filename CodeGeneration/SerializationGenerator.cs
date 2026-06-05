@@ -1,4 +1,3 @@
-using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -52,15 +51,15 @@ internal static class SerializationGenerator
                  {
                      {{constructor}}
                  
-                     public static void Serialize({{className}} value, IBufferWriter<byte> writer)
+                     public void Serialize(IBufferWriter<byte> writer)
                      {
-                         {{EmitSerializeBody(members)}}
+                 {{EmitSerializeBody(members)}}
                      }
                      
-                     public static ReadOnlySpan<byte> Serialize({{className}} value)
+                     public ReadOnlySpan<byte> Serialize()
                      {
                          var writer = new ArrayBufferWriter<byte>();
-                         Serialize(value, writer);
+                         Serialize(writer);
                          
                          return writer.WrittenSpan;
                      }
@@ -68,55 +67,67 @@ internal static class SerializationGenerator
 
                      public static {{className}} Deserialize(ref ReadOnlySpan<byte> buffer)
                      {
-                         {{EmitDeserializeBody(members, className)}}
+                 {{EmitDeserializeBody(members, className)}}
                      }
                  }
                  """;
     }
     
-    private  static string EmitSerializeBody(ISymbol[] members)
+    private static string EmitSerializeBody(ISymbol[] members)
     {
-        var body = new StringBuilder();
-        var indent = new string(' ', 8);
+        var body = new SyntaxBuilder(new string(' ', 8));
         
         foreach (var member in members)
-            body.AppendLine(indent + EmitWriteForMember(member.Name, GetMemberType(member)));
+            EmitWriteForMember(member.Name, GetMemberType(member), body);
         
-        return body.ToString();
-    }
+        return body.Build();
+    } 
 
     private static string EmitDeserializeBody(ISymbol[] members, string className)
     {
-        var body = new StringBuilder();
-        var indent = new string(' ', 8);
+        var body = new SyntaxBuilder(new string(' ', 8));
         
         const string classVariableName = "deserializedClass";
-        var classCreation = $"var {classVariableName} = new {className}();";
-        body.AppendLine(classCreation);
+        body.Declare(className, classVariableName, SyntaxBuilder.New(className));
 
         foreach (var member in members)
-        {
-            var assignMemberValue = $"{classVariableName}.{member.Name} = {EmitReadForMember(GetMemberType(member))};";
-            body.AppendLine(indent + assignMemberValue);
-        }
+            EmitReadForMember(GetMemberType(member), $"{classVariableName}.{member.Name}", body);
         
-        body.AppendLine(indent + $"return {classVariableName};");
+        body.Return(classVariableName);
+
+        return body.Build();
+    }
+    
+
+    private static void EmitWriteForMember(string name, ITypeSymbol member, SyntaxBuilder builder)
+    {
+        string writeOp = string.Empty;
         
-        return body.ToString();
+        var memberType = GetSpecialTypeString(member.SpecialType);
+        if (memberType != null)
+            writeOp = $"writer.Write{memberType}({name});";
+        else if (member.TypeKind == TypeKind.Class || member.TypeKind == TypeKind.Struct)
+            writeOp = $"{name}.Serialize(writer);";
+        
+        
+        if (MemberCanBeNull(member))
+            builder.If($"{name} is not null", body => body.AppendLines("writer.WriteByte(1);", writeOp))
+                .Else(b => b.AppendLine("writer.WriteByte(0);"));
+        else
+            builder.AppendLines("writer.WriteByte(1);", writeOp);
     }
 
-    private static string EmitWriteForMember(string name, ITypeSymbol member)
+    private static void EmitReadForMember(ITypeSymbol member, string readVariable, SyntaxBuilder builder)
     {
-        var memberType = GetTypeString(member.SpecialType) ?? "";
-        
-        return $"writer.Write{memberType}(value.{name});";
-    }
+        var memberType = GetSpecialTypeString(member.SpecialType);
+        string readOp = string.Empty;
 
-    private static string EmitReadForMember(ITypeSymbol member)
-    {
-        var memberType = GetTypeString(member.SpecialType) ?? "";
+        if (memberType != null)
+            readOp = $"buffer.Read{memberType}();";
+        else if (member.TypeKind == TypeKind.Class || member.TypeKind == TypeKind.Struct)
+            readOp = $"{member.Name}.Deserialize(ref buffer);";
         
-        return $"buffer.Read{memberType}();";
+        builder.If("buffer.ReadByte() != 0", body => body.Assign(readVariable, readOp));
     }
     
     private static ITypeSymbol GetMemberType(ISymbol member)
@@ -128,7 +139,7 @@ internal static class SerializationGenerator
         };
     }
     
-    private static string? GetTypeString(SpecialType specialType)
+    private static string? GetSpecialTypeString(SpecialType specialType)
     {
         return specialType switch
         {
@@ -145,7 +156,12 @@ internal static class SerializationGenerator
             SpecialType.System_Double  => "Double",
             SpecialType.System_Decimal => "Decimal",
             SpecialType.System_String  => "String",
+            SpecialType.System_Array   => "Array",
+            SpecialType.System_Enum    => "Enum",
             _                          => null
         };
     }
+
+    private static bool MemberCanBeNull(ITypeSymbol member)
+        => member.NullableAnnotation == NullableAnnotation.Annotated || member.IsReferenceType;
 }

@@ -4,9 +4,9 @@ using System.Text;
 
 namespace Serialization.Extensions;
 
-public static class ArrayBufferWriterExtensions
+public static class BufferWriterExtensions
 {
-    extension(ArrayBufferWriter<byte> w)
+    extension(IBufferWriter<byte> w)
     {
         public void WriteBool(bool value)
         {
