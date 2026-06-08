@@ -2,4 +2,5 @@
   <Project Path="CodeGeneration/CodeGeneration.csproj" />
   <Project Path="Experimental/Experimental.csproj" />
   <Project Path="Serialization/Serialization.csproj" />
+  <Project Path="Test/Test.csproj" />
 </Solution>

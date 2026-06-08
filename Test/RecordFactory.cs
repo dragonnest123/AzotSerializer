@@ -13,10 +13,17 @@ public static class ClassFactory
             Age = age
         };
 
-    public static ClassWithNestedClass CreateClassWithNestedClass(NestedClass? nestedClass = null)
-        => new ClassWithNestedClass
+    public static ClassWithNestedObjects CreateClassWithNestedObjects(
+        NestedClass? nestedClass = null,
+        NestedStruct? nestedStruct = null,
+        NestedRecord? nestedRecord = null,
+        NestedRecordStruct? nestedRecordStruct = null)
+        => new ClassWithNestedObjects()
         {
-            NestedClass = nestedClass ??  new NestedClass { Value = 123124, Nested = new NestedClass { Value = 456 } },
+            Class = nestedClass ?? new NestedClass { Value = 123124, Nested = new NestedClass { Value = 456 } },
+            Struct = nestedStruct ?? new NestedStruct { Value = 456, Nested = new NestedClass { Value = 5123 } },
+            Record = nestedRecord ?? new NestedRecord { Value = 456, Nested = new NestedStruct { Value = 1} },
+            RecordStruct = nestedRecordStruct ?? new NestedRecordStruct { Value = 456, Nested = new NestedStruct { Value = 3} }
         };
 
     public static ComplexClass CreateComplexClass(

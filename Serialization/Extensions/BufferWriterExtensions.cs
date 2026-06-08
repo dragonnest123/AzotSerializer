@@ -104,5 +104,10 @@ public static class BufferWriterExtensions
             Encoding.UTF8.GetBytes(value, span);
             w.Advance(byteCount);
         }
+
+        public void WriteArray<T>(T[] array)
+        {
+            
+        }
     }
 }

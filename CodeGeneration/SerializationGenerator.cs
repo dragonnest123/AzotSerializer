@@ -1,3 +1,4 @@
+using AzotSerializer.Extensions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -24,11 +25,12 @@ internal static class SerializationGenerator
     private static string EmitSerialization(INamedTypeSymbol typeSymbol)
     {
         var @namespace = typeSymbol.ContainingNamespace.ToDisplayString();
-        var className = typeSymbol.Name;
+        var typeName = typeSymbol.Name;
+        var typeKind = GetMemberKindString(typeSymbol);
         var members = typeSymbol
             .GetMembers()
-            .Where(symbol => (symbol.Kind == SymbolKind.Field && !symbol.IsImplicitlyDeclared) 
-                             || symbol.Kind == SymbolKind.Property)
+            .Where(symbol => (symbol.Kind == SymbolKind.Field || symbol.Kind == SymbolKind.Property) 
+                    && !symbol.IsImplicitlyDeclared)
             .ToArray();
         
         var hasParameterlessConstructor = typeSymbol.Constructors
@@ -36,7 +38,7 @@ internal static class SerializationGenerator
         
         var constructor = hasParameterlessConstructor 
             ? "" 
-            : $"public {className}() {{ }}";
+            : $"public {typeName}() {{ }}";
         
         return $$"""
                  using System;
@@ -47,7 +49,7 @@ internal static class SerializationGenerator
 
                  namespace {{@namespace}};
 
-                 public partial class {{className}}
+                 public partial {{typeKind}} {{typeName}}
                  {
                      {{constructor}}
                  
@@ -65,9 +67,9 @@ internal static class SerializationGenerator
                      }
                      
 
-                     public static {{className}} Deserialize(ref ReadOnlySpan<byte> buffer)
+                     public static {{typeName}} Deserialize(ref ReadOnlySpan<byte> buffer)
                      {
-                 {{EmitDeserializeBody(members, className)}}
+                 {{EmitDeserializeBody(members, typeName)}}
                      }
                  }
                  """;
@@ -87,7 +89,7 @@ internal static class SerializationGenerator
     {
         var body = new SyntaxBuilder(new string(' ', 8));
         
-        const string classVariableName = "deserializedClass";
+        const string classVariableName = "deserializedObject";
         body.Declare(className, classVariableName, SyntaxBuilder.New(className));
 
         foreach (var member in members)
@@ -97,37 +99,42 @@ internal static class SerializationGenerator
 
         return body.Build();
     }
-    
 
     private static void EmitWriteForMember(string name, ITypeSymbol member, SyntaxBuilder builder)
     {
-        string writeOp = string.Empty;
+        string writeOp;
+        var nullableValueName = member.IsNullableValueType() ? $"{name}.Value" : name;
+        string? specialType = member
+            .GetNullableValueUnderlyingType()
+            .GetSpecialTypeString();
+
+        if (specialType != null)
+            writeOp = $"writer.Write{specialType}({nullableValueName});";
+        else
+            writeOp = $"{nullableValueName}.Serialize(writer);";
         
-        var memberType = GetSpecialTypeString(member.SpecialType);
-        if (memberType != null)
-            writeOp = $"writer.Write{memberType}({name});";
-        else if (member.TypeKind == TypeKind.Class || member.TypeKind == TypeKind.Struct)
-            writeOp = $"{name}.Serialize(writer);";
-        
-        
-        if (MemberCanBeNull(member))
+        if (member.CanBeNull())
             builder.If($"{name} is not null", body => body.AppendLines("writer.WriteByte(1);", writeOp))
                 .Else(b => b.AppendLine("writer.WriteByte(0);"));
         else
-            builder.AppendLines("writer.WriteByte(1);", writeOp);
+            builder.AppendLine(writeOp);
     }
 
     private static void EmitReadForMember(ITypeSymbol member, string readVariable, SyntaxBuilder builder)
     {
-        var memberType = GetSpecialTypeString(member.SpecialType);
+        var notNullable = member.GetNullableValueUnderlyingType();
+        var typeName = notNullable.GetSpecialTypeString();
         string readOp = string.Empty;
 
-        if (memberType != null)
-            readOp = $"buffer.Read{memberType}();";
+        if (typeName != null)
+            readOp = $"buffer.Read{typeName}();";
         else if (member.TypeKind == TypeKind.Class || member.TypeKind == TypeKind.Struct)
-            readOp = $"{member.Name}.Deserialize(ref buffer);";
-        
-        builder.If("buffer.ReadByte() != 0", body => body.Assign(readVariable, readOp));
+            readOp = $"{notNullable.Name}.Deserialize(ref buffer);";
+
+        if (member.CanBeNull())
+            builder.If("buffer.ReadByte() != 0", body => body.Assign(readVariable, readOp));
+        else
+            builder.Assign(readVariable, readOp);
     }
     
     private static ITypeSymbol GetMemberType(ISymbol member)
@@ -135,33 +142,19 @@ internal static class SerializationGenerator
         return member switch
         {
             IPropertySymbol p => p.Type,
-            IFieldSymbol f    => f.Type
-        };
-    }
-    
-    private static string? GetSpecialTypeString(SpecialType specialType)
-    {
-        return specialType switch
-        {
-            SpecialType.System_Boolean => "Bool",
-            SpecialType.System_Byte    => "Byte",
-            SpecialType.System_SByte   => "SByte",
-            SpecialType.System_Int16   => "Int16",
-            SpecialType.System_UInt16  => "UInt16",
-            SpecialType.System_Int32   => "Int32",
-            SpecialType.System_UInt32  => "UInt32",
-            SpecialType.System_Int64   => "Int64",
-            SpecialType.System_UInt64  => "UInt64",
-            SpecialType.System_Single  => "Single",
-            SpecialType.System_Double  => "Double",
-            SpecialType.System_Decimal => "Decimal",
-            SpecialType.System_String  => "String",
-            SpecialType.System_Array   => "Array",
-            SpecialType.System_Enum    => "Enum",
-            _                          => null
+            IFieldSymbol f    => f.Type,
         };
     }
 
-    private static bool MemberCanBeNull(ITypeSymbol member)
-        => member.NullableAnnotation == NullableAnnotation.Annotated || member.IsReferenceType;
+    private static string? GetMemberKindString(INamedTypeSymbol namedTypeSymbol)
+    {
+        return (namedTypeSymbol.TypeKind, namedTypeSymbol.IsRecord) switch
+        {
+            (TypeKind.Class, false)  => "class",
+            (TypeKind.Class, true)   => "record",
+            (TypeKind.Struct, false) => "struct",
+            (TypeKind.Struct, true)  => "record struct",
+            _ => null
+        };
+    }
 }
