@@ -2,11 +2,11 @@ using AzotSerializer.Extensions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace AzotSerializer;
+namespace AzotSerializer.Generators;
 
-internal static class SerializationGenerator
+internal static class TypeSerializationGenerator
 {
-    public static void Generate(
+    public static void GenerateSerializer(
         TypeDeclarationSyntax typeSyntax, 
         Compilation compilation,
         SourceProductionContext productionContext)
@@ -15,23 +15,21 @@ internal static class SerializationGenerator
 
         if (semanticModel.GetDeclaredSymbol(typeSyntax) is not INamedTypeSymbol typeSymbol)
             return;
-
-        if (!SyntaxValidator.SyntaxIsValid(typeSyntax, productionContext))
+        
+        var typeMembers = SerializationDataProvider.GetTargetSerializationMembers(typeSymbol);
+        if (!SyntaxValidator.IsTypeSerializable(typeSyntax, typeMembers, productionContext))
             return;
 
-        productionContext.AddSource($"{typeSymbol.Name}Serializer.g.cs", EmitSerialization(typeSymbol));
+        productionContext.AddSource($"{typeSymbol.Name}Serializer.g.cs", EmitSerializationFile(typeSymbol, typeMembers));
     }
     
-    private static string EmitSerialization(INamedTypeSymbol typeSymbol)
+    private static string EmitSerializationFile(
+        INamedTypeSymbol typeSymbol,
+        ISymbol[] typeMembers)
     {
         var @namespace = typeSymbol.ContainingNamespace.ToDisplayString();
         var typeName = typeSymbol.Name;
         var typeKind = GetMemberKindString(typeSymbol);
-        var members = typeSymbol
-            .GetMembers()
-            .Where(symbol => (symbol.Kind == SymbolKind.Field || symbol.Kind == SymbolKind.Property) 
-                    && !symbol.IsImplicitlyDeclared)
-            .ToArray();
         
         var hasParameterlessConstructor = typeSymbol.Constructors
             .Any(c => c.Parameters.Length == 0 && !c.IsImplicitlyDeclared);
@@ -55,7 +53,7 @@ internal static class SerializationGenerator
                  
                      public void Serialize(IBufferWriter<byte> writer)
                      {
-                 {{EmitSerializeBody(members)}}
+                 {{EmitSerializeBody(typeMembers)}}
                      }
                      
                      public ReadOnlySpan<byte> Serialize()
@@ -69,7 +67,7 @@ internal static class SerializationGenerator
 
                      public static {{typeName}} Deserialize(ref ReadOnlySpan<byte> buffer)
                      {
-                 {{EmitDeserializeBody(members, typeName)}}
+                 {{EmitDeserializeBody(typeMembers, typeName)}}
                      }
                  }
                  """;
@@ -78,74 +76,40 @@ internal static class SerializationGenerator
     private static string EmitSerializeBody(ISymbol[] members)
     {
         var body = new SyntaxBuilder(new string(' ', 8));
-        
+
         foreach (var member in members)
-            EmitWriteForMember(member.Name, GetMemberType(member), body);
+        {
+            var typeSymbol = member.GetPropertyOrFieldType();
+            if (typeSymbol is null)
+                return body.AppendLine($"{member.ToDisplayString()} is not a property or field").Build();
+            
+            ReadWriteGenerator.GenerateWriteForMember(member.Name, typeSymbol, body);
+        }
         
         return body.Build();
-    } 
+    }
 
     private static string EmitDeserializeBody(ISymbol[] members, string className)
     {
         var body = new SyntaxBuilder(new string(' ', 8));
         
         const string classVariableName = "deserializedObject";
-        body.Declare(className, classVariableName, SyntaxBuilder.New(className));
+        body.Initialize(className, classVariableName, SyntaxBuilder.New(className));
 
         foreach (var member in members)
-            EmitReadForMember(GetMemberType(member), $"{classVariableName}.{member.Name}", body);
+        {
+            var typeSymbol = member.GetPropertyOrFieldType();
+            if (typeSymbol is null)
+                return body.AppendLine($"{member.ToDisplayString()} is not a property or field").Build();
+            
+            ReadWriteGenerator.GenerateReadForMember($"{classVariableName}.{member.Name}", typeSymbol, body);
+        }
         
         body.Return(classVariableName);
 
         return body.Build();
     }
-
-    private static void EmitWriteForMember(string name, ITypeSymbol member, SyntaxBuilder builder)
-    {
-        string writeOp;
-        var nullableValueName = member.IsNullableValueType() ? $"{name}.Value" : name;
-        string? specialType = member
-            .GetNullableValueUnderlyingType()
-            .GetSpecialTypeString();
-
-        if (specialType != null)
-            writeOp = $"writer.Write{specialType}({nullableValueName});";
-        else
-            writeOp = $"{nullableValueName}.Serialize(writer);";
-        
-        if (member.CanBeNull())
-            builder.If($"{name} is not null", body => body.AppendLines("writer.WriteByte(1);", writeOp))
-                .Else(b => b.AppendLine("writer.WriteByte(0);"));
-        else
-            builder.AppendLine(writeOp);
-    }
-
-    private static void EmitReadForMember(ITypeSymbol member, string readVariable, SyntaxBuilder builder)
-    {
-        var notNullable = member.GetNullableValueUnderlyingType();
-        var typeName = notNullable.GetSpecialTypeString();
-        string readOp = string.Empty;
-
-        if (typeName != null)
-            readOp = $"buffer.Read{typeName}();";
-        else if (member.TypeKind == TypeKind.Class || member.TypeKind == TypeKind.Struct)
-            readOp = $"{notNullable.Name}.Deserialize(ref buffer);";
-
-        if (member.CanBeNull())
-            builder.If("buffer.ReadByte() != 0", body => body.Assign(readVariable, readOp));
-        else
-            builder.Assign(readVariable, readOp);
-    }
     
-    private static ITypeSymbol GetMemberType(ISymbol member)
-    {
-        return member switch
-        {
-            IPropertySymbol p => p.Type,
-            IFieldSymbol f    => f.Type,
-        };
-    }
-
     private static string? GetMemberKindString(INamedTypeSymbol namedTypeSymbol)
     {
         return (namedTypeSymbol.TypeKind, namedTypeSymbol.IsRecord) switch

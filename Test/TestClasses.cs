@@ -47,6 +47,25 @@ public partial class ClassWithNestedObjects
     public NestedRecordStruct? RecordStruct { get; set; }
 }
 
+[ByteSerializable]
+public partial class ClassWithCollection
+{
+    public List<int>? ListCollection { get; set; }
+    public Dictionary<int, string> DictionaryCollection { get; set; }
+}
+
+[ByteSerializable]
+public partial class A
+{
+    public B B { get; set; }
+}
+
+[ByteSerializable]
+public partial class B
+{
+    
+}
+
 
 public class ComplexClass
 {

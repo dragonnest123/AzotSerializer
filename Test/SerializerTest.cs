@@ -27,4 +27,22 @@ public class SerializerTest
         classWithNestedClass.Should().BeEquivalentTo(deserialized, options => 
             options.ComparingByMembers<NestedStruct>());
     }
+    
+    [Fact]
+    public void Serialize_ClassWithCollection()
+    {
+        var classWithCollection = ClassFactory.CreateClassWithCollection();
+        
+        var serialized = classWithCollection.Serialize();
+        var deserialized = ClassWithCollection.Deserialize(ref serialized);
+        
+        classWithCollection.Should().BeEquivalentTo(deserialized);
+
+        Dictionary<int, string> a = new Dictionary<int, string>();
+
+        var b = a.GetEnumerator();
+ 
+        //TODO: попробовать другие коллекции помимо List, попробовать не примитвные объекты в качестве элементов коллекции
+        //TODO: в частности интересно что будет с object
+    }
 }

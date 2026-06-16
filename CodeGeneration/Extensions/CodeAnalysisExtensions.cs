@@ -7,7 +7,7 @@ public static class CodeAnalysisExtensions
 {
     extension(ITypeSymbol typeSymbol)
     {
-        public bool IsNullable() 
+        public bool IsNullable()
             => typeSymbol.NullableAnnotation == NullableAnnotation.Annotated;
 
         public bool IsNullableValueType() 
@@ -15,6 +15,9 @@ public static class CodeAnalysisExtensions
 
         public bool IsEnum() 
             => typeSymbol is INamedTypeSymbol namedType && namedType.EnumUnderlyingType != null;
+        
+        public bool IsCollection() 
+            => typeSymbol.AllInterfaces.Any(x => x.OriginalDefinition.ToDisplayString() == "System.Collections.Generic.ICollection<T>");
 
         public bool IsNullableEnumType() 
             => typeSymbol.GetNullableValueUnderlyingType().IsEnum();
@@ -50,6 +53,19 @@ public static class CodeAnalysisExtensions
                 SpecialType.System_Array      => "Array",
                 SpecialType.System_Enum       => "Enum",
                 _                             => null
+            };
+        }
+    }
+
+    extension(ISymbol symbol)
+    {
+        public ITypeSymbol? GetPropertyOrFieldType()
+        {
+            return symbol switch
+            {
+                IPropertySymbol p => p.Type,
+                IFieldSymbol f    => f.Type,
+                _ => null
             };
         }
     }

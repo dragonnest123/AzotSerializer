@@ -20,57 +20,46 @@ public class SyntaxBuilder
     public static string New(string className, params string[] args)
         => $"new {className}({string.Join(", ", args)})";
 
-    public static string Call(string objectName, string methodName, params string[] args)
-        => $"{objectName}.{methodName}({string.Join(", ", args)})";
-
-    public static string Call(string methodName, params string[] args)
-        => $"{methodName}({string.Join(", ", args)})";
-    
-    
     public SyntaxBuilder AppendLine(string line)
     {
         _builder.AppendLineWithIndent(_indent, line);
-        
+
         return this;
     }
 
-    public SyntaxBuilder AppendLines(params string[] lines)
+    public SyntaxBuilder Expression(string line)
+    {
+        _builder.AppendLineWithIndent(_indent, $"{line};");
+        
+        return this;
+    }
+    
+    public SyntaxBuilder Expressions(params string[] lines)
     {
         foreach (var line in lines)
-            _builder.AppendLineWithIndent(_indent, line);
-
+            _builder.AppendLineWithIndent(_indent, $"{line};");
+        
         return this;
     }
 
     public SyntaxBuilder Assign(string variable, string value)
     {
-        _builder.AppendLineWithIndent(_indent, $"{variable} = {value}");
-        
-        return this;
-    }
-    
-    public SyntaxBuilder Declare(string type, string varName, string value)
-    {
-        _builder.AppendLineWithIndent(_indent, $"{type} {varName} = {value};");
-        
-        return this;
+        return Expression($"{variable} = {value}");
     }
 
-    public SyntaxBuilder MethodCall(string methodName, string? objectName, params string[] methodParams)
+    public SyntaxBuilder Initialize(string type, string varName, string value)
     {
-        if (objectName == null)
-            _builder.AppendLineWithIndent(_indent, $"{methodName}({string.Join(", ", methodParams)})");
-        else
-            _builder.AppendLineWithIndent(_indent, $"{objectName}.{methodName}({string.Join(", ", methodParams)})");
+        return Expression($"{type} {varName} = {value}");
+    }
 
-        return this;
+    public SyntaxBuilder Declare(string type, string varName)
+    {
+        return Expression($"{type} {varName}");
     }
 
     public SyntaxBuilder Return(string returnValue)
     {
-        _builder.AppendWithIndent(_indent, $"return {returnValue};");
-
-        return this;
+        return Expression($"return {returnValue}");
     }
     
     public SyntaxBuilder If(string condition, Action<SyntaxBuilder> body)
@@ -91,6 +80,27 @@ public class SyntaxBuilder
     {
         _builder.AppendLineWithIndent(_indent, "else");
 
+        return BuildBody(body);
+    }
+    
+    public SyntaxBuilder For(string init, string condition, string action, Action<SyntaxBuilder> body)
+    {
+        _builder.AppendLineWithIndent(_indent, $"for ({init}; {condition}; {action})");
+        
+        return BuildBody(body);
+    }
+
+    public SyntaxBuilder Foreach(string collectionName, Action<SyntaxBuilder> body)
+    {
+        _builder.AppendLineWithIndent(_indent, $"foreach (var item in {collectionName})");
+        
+        return BuildBody(body);
+    }
+
+    public SyntaxBuilder While(string condition, Action<SyntaxBuilder> body)
+    {
+        _builder.AppendLineWithIndent(_indent, $"while ({condition})");
+        
         return BuildBody(body);
     }
     

@@ -26,6 +26,21 @@ public static class ClassFactory
             RecordStruct = nestedRecordStruct ?? new NestedRecordStruct { Value = 456, Nested = new NestedStruct { Value = 3} }
         };
 
+    public static ClassWithCollection CreateClassWithCollection(
+        List<int>? list = null, 
+        Dictionary<int, string>? dictionary = null)
+        => new ClassWithCollection
+        {
+            ListCollection = list ?? [234, 123, 7, 35235, 1236, 24034, 23124, 6234, 4581832, 1281300],
+            DictionaryCollection = dictionary ?? new Dictionary<int, string>
+            {
+                [1] = "one",
+                [2] = "two",
+                [3] = "three",
+                [100] = "hundred"
+            }
+        };
+
     public static ComplexClass CreateComplexClass(
         int id = 0, 
         string? name = "ABC", 
