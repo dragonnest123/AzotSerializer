@@ -30,7 +30,7 @@ internal static class ReadWriteGenerator
     {
         var type = member.ToDisplayString();
         
-        builder.Declare(type, declaredVar);
+        builder.Initialize(type, declaredVar, "default");
         if (member.CanBeNull())
             builder.If("buffer.ReadByte() != 0", body => GenerateRead(declaredVar, member, body));
         else
@@ -43,6 +43,7 @@ internal static class ReadWriteGenerator
         var notNullable = memberType.GetNullableValueUnderlyingType();
 
         if (PrimitiveTypeReadWriteGenerator.TryGenerateWriteForMember(memberVar, notNullable, builder) ||
+            WellKnownTypesReadWriteGenerator.TryGenerateWriteForMember(memberVar, notNullable, builder) ||
             CollectionReadWriteGenerator.TryGenerateWriteForMember(memberVar, notNullable, builder))
         {
             return;
@@ -56,6 +57,7 @@ internal static class ReadWriteGenerator
         var notNullable = memberType.GetNullableValueUnderlyingType();
 
         if (PrimitiveTypeReadWriteGenerator.TryGenerateReadForMember(memberVar, notNullable, builder) ||
+            WellKnownTypesReadWriteGenerator.TryGenerateReadForMember(memberVar, notNullable, builder) ||
             CollectionReadWriteGenerator.TryGenerateReadForMember(memberVar, notNullable, builder))
         {
             return;

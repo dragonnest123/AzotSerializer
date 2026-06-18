@@ -3,7 +3,7 @@ using Microsoft.CodeAnalysis;
 
 namespace AzotSerializer.Extensions;
 
-public static class CodeAnalysisExtensions
+internal static class CodeAnalysisExtensions
 {
     extension(ITypeSymbol typeSymbol)
     {

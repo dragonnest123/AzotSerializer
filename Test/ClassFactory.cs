@@ -27,12 +27,16 @@ public static class ClassFactory
         };
 
     public static ClassWithCollection CreateClassWithCollection(
-        List<int>? list = null, 
+        List<int>? list = null,
+        List<object>? listObjects = null,
+        HashSet<SimpleClass>? set = null,
         Dictionary<int, string>? dictionary = null)
         => new ClassWithCollection
         {
-            ListCollection = list ?? [234, 123, 7, 35235, 1236, 24034, 23124, 6234, 4581832, 1281300],
-            DictionaryCollection = dictionary ?? new Dictionary<int, string>
+            List = list ?? [234, 123, 7, 35235, 1236, 24034, 23124, 6234, 4581832, 1281300],
+            ListObjects = listObjects ?? [ CreateSimpleClass(), 12, "asdbcds" ], 
+            HashSet = set ?? [ CreateSimpleClass(), CreateSimpleClass(), CreateSimpleClass() ],
+            Dictionary = dictionary ?? new Dictionary<int, string>
             {
                 [1] = "one",
                 [2] = "two",

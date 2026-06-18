@@ -3,7 +3,7 @@ using Microsoft.CodeAnalysis;
 
 namespace AzotSerializer.Generators;
 
-public static class PrimitiveTypeReadWriteGenerator
+internal static class PrimitiveTypeReadWriteGenerator
 {
     public static bool TryGenerateWriteForMember(string memberVar, ITypeSymbol memberType, SyntaxBuilder builder)
     {

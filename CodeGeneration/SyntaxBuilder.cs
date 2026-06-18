@@ -19,6 +19,9 @@ public class SyntaxBuilder
     
     public static string New(string className, params string[] args)
         => $"new {className}({string.Join(", ", args)})";
+    
+    public static string CastTo(string variable, string typeToCast)
+        => $"(({typeToCast}){variable})";
 
     public SyntaxBuilder AppendLine(string line)
     {
@@ -50,11 +53,6 @@ public class SyntaxBuilder
     public SyntaxBuilder Initialize(string type, string varName, string value)
     {
         return Expression($"{type} {varName} = {value}");
-    }
-
-    public SyntaxBuilder Declare(string type, string varName)
-    {
-        return Expression($"{type} {varName}");
     }
 
     public SyntaxBuilder Return(string returnValue)

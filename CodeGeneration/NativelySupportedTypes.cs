@@ -7,7 +7,7 @@ public static class NativelySupportedTypes
     public static bool IsSupported(ITypeSymbol type)
         => PrimitiveSupportedTypes.IsSupported(type) ||
            CollectionSupportedTypes.IsSupported(type) ||
-           MiscellaneousSupportedTypes.IsSupported(type);
+           WellKnownSupportedTypes.IsSupported(type);
 }
 
 public static class PrimitiveSupportedTypes
@@ -26,7 +26,7 @@ public static class PrimitiveSupportedTypes
         SpecialType.System_Single,
         SpecialType.System_Double,
         SpecialType.System_Decimal,
-        SpecialType.System_String,
+        SpecialType.System_String
     ];
     
     public static bool IsSupported(ITypeSymbol type)
@@ -37,11 +37,11 @@ public static class PrimitiveSupportedTypes
 
 public static class CollectionSupportedTypes
 {
-    public static string GenericCollectionInterface => "System.Collections.Generic.ICollection<T>";
+    public const string CollectionInterface = "System.Collections.Generic.ICollection<T>";
     
     private static readonly HashSet<string> _collectionTypes =
     [
-        GenericCollectionInterface,
+        CollectionInterface,
     ];
     
     public static bool IsSupported(ITypeSymbol type)
@@ -51,16 +51,21 @@ public static class CollectionSupportedTypes
     }
 }
 
-public static class MiscellaneousSupportedTypes
+public static class WellKnownSupportedTypes
 {
+    public const string DateTime = "System.DateTime";
+    public const string TimeSpan = "System.TimeSpan";
+    public const string KeyValuePair = "System.Collections.Generic.KeyValuePair<TKey, TValue>";
+    
     private static readonly HashSet<string> _miscellaneousTypes = 
     [
-        "System.Collections.Generic.KeyValuePair<TKey, TValue>"
+        DateTime,
+        TimeSpan,
+        KeyValuePair
     ];
     
     public static bool IsSupported(ITypeSymbol type)
     {
-        return type.AllInterfaces.Any(i => 
-            _miscellaneousTypes.Contains(i.OriginalDefinition.ToDisplayString()));
+        return _miscellaneousTypes.Contains(type.OriginalDefinition.ToDisplayString());
     }
 }
