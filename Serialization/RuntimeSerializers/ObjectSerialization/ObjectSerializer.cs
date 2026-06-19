@@ -1,12 +1,12 @@
-namespace AzotBase.Common.Serialization.Serializers;
+namespace Serialization.RuntimeSerializers.ObjectSerialization;
 
-public static class ClassSerializer
+public static class ObjectSerializer
 {
     public static ReadOnlySpan<byte> Serialize<T>(T obj) where T : notnull
         => Serialize(typeof(T), obj);
 
     public static ReadOnlySpan<byte> Serialize(Type type, object obj)
-        => InternalClassSerializer.Serialize(type, obj);
+        => InternalObjectSerializer.Serialize(type, obj);
     
     /// <summary>
     /// Should have parameterless constructor
@@ -15,5 +15,5 @@ public static class ClassSerializer
         => (T)Deserialize(typeof(T), data);
 
     public static object Deserialize(Type type, byte[] data)
-        => InternalClassDeserializer.Deserialize(type, data);
+        => InternalObjectDeserializer.Deserialize(type, data);
 }

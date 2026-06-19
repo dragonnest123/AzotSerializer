@@ -20,6 +20,13 @@ public static class SpanReaderExtensions
             buffer = buffer[1..];
             return value;
         }
+        
+        public ReadOnlySpan<byte> ReadBytes(int count)
+        {
+            var value = buffer[..count];
+            buffer = buffer[count..];
+            return value;
+        }
 
         public sbyte ReadSByte()
         {
@@ -27,6 +34,8 @@ public static class SpanReaderExtensions
             buffer = buffer[1..];
             return value;
         }
+
+        public char ReadChar() => (char)buffer.ReadUInt16();
 
         public short ReadInt16()
         {
@@ -101,6 +110,19 @@ public static class SpanReaderExtensions
             var value = Encoding.UTF8.GetString(buffer[..length]);
             buffer = buffer[length..];
             return value;
+        }
+        
+        public DateTime ReadDateTime()
+        {
+            var ticks = buffer.ReadInt64();
+            var kind = (DateTimeKind)buffer.ReadByte();
+            return new DateTime(ticks, kind);
+        }
+
+        public TimeSpan ReadTimeSpan()
+        {
+            var ticks = buffer.ReadInt64();
+            return new TimeSpan(ticks);
         }
     }
 }

@@ -1,19 +1,16 @@
 using System.Runtime.InteropServices;
 
-namespace AzotBase.Common.Serialization.Serializers;
+namespace Serialization.RuntimeSerializers.StructSerialization;
 
-/// <summary>
-/// Only for structures that do not contain reference types
-/// </summary>
-public static class StructSerializer 
+internal static class BlittableStructSerializer 
 {
-    public static Span<byte> Serialize<T>(ref T value) where T : unmanaged
+    public static Span<byte> Serialize<T>(ref T value) where T : struct
     {
         var span = MemoryMarshal.CreateSpan(ref value, 1);
         return MemoryMarshal.AsBytes(span);
     }
 
-    public static void Serialize<T>(byte[] buffer, int offset, ref T value) where T : unmanaged
+    public static void Serialize<T>(byte[] buffer, int offset, ref T value) where T : struct
     {
         var span = MemoryMarshal.CreateSpan(ref value, 1);
         var bytes = MemoryMarshal.AsBytes(span);
@@ -22,7 +19,7 @@ public static class StructSerializer
     
     public static byte[] Serialize(Type type, object value)
     {
-        var size = TypeMetadataCache.GetStructSize(type);
+        var size = TypeMetadata.GetStructSize(type);
 
         var buffer = new byte[size];
         var handle = GCHandle.Alloc(value, GCHandleType.Pinned);
@@ -38,7 +35,7 @@ public static class StructSerializer
         return buffer;
     }
     
-    public static T Deserialize<T>(Span<byte> data) where T : unmanaged
+    public static T Deserialize<T>(Span<byte> data) where T : struct
     {
         return MemoryMarshal.Read<T>(data);
     }

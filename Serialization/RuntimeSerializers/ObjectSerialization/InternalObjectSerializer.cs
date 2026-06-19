@@ -1,9 +1,9 @@
 using System.Buffers;
 using Serialization.Extensions;
 
-namespace AzotBase.Common.Serialization.Serializers;
+namespace Serialization.RuntimeSerializers.ObjectSerialization;
 
-internal static class InternalClassSerializer
+internal static class InternalObjectSerializer
 {
     public static ReadOnlySpan<byte> Serialize<T>(T obj) where T : notnull
         => Serialize(typeof(T), obj);
@@ -15,6 +15,16 @@ internal static class InternalClassSerializer
         SerializeObjectMembers(type, obj, writer);
 
         return writer.WrittenSpan;
+    }
+    
+    private static void SerializeObjectMembers(Type type, object obj, ArrayBufferWriter<byte> writer)
+    {
+        var props = TypeMetadata.GetProperties(type);
+        foreach (var accessor in props)
+        {
+            var prop = accessor.Getter.Invoke(obj);
+            SerializeObject(accessor.Type, prop, writer);
+        }
     }
     
     private static void SerializeObject(Type type, object? obj, ArrayBufferWriter<byte> writer)
@@ -30,17 +40,7 @@ internal static class InternalClassSerializer
         if (TrySerializeBuiltInType(notNullableType, obj, writer))
             return;
 
-        SerializeObjectMembers(type, obj, writer);
-    }
-
-    private static void SerializeObjectMembers(Type type, object obj, ArrayBufferWriter<byte> writer)
-    {
-        var props = TypeMetadataCache.GetProperties(type);
-        foreach (var accessor in props)
-        {
-            var prop = accessor.Getter.Invoke(obj);
-            SerializeObject(accessor.Type, prop, writer);
-        }
+        SerializeObjectMembers(notNullableType, obj, writer);
     }
     
     private static bool TrySerializeStructure(Type type, object obj, ArrayBufferWriter<byte> writer)
@@ -48,7 +48,7 @@ internal static class InternalClassSerializer
         if (!type.IsValueType)
             return false;
         
-        var serialized = StructSerializer.Serialize(type, obj);
+        var serialized = StructSerialization.StructSerializer.Serialize(type, obj);
         writer.Write(serialized);
         return true;
     }

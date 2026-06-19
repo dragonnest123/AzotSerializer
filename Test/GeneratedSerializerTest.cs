@@ -37,10 +37,6 @@ public class SerializerTest
         var deserialized = ClassWithCollection.Deserialize(ref serialized);
         
         classWithCollection.Should().BeEquivalentTo(deserialized);
-
-        Dictionary<int, string> a = new Dictionary<int, string>();
-
-        var b = a.GetEnumerator();
  
         //TODO: попробовать другие коллекции помимо List, попробовать не примитвные объекты в качестве элементов коллекции
         //TODO: в частности интересно что будет с object

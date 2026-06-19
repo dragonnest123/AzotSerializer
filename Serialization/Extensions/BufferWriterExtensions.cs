@@ -28,6 +28,8 @@ public static class BufferWriterExtensions
             span[0] = (byte)value;
             w.Advance(1);
         }
+        
+        public void WriteChar(char value) => w.WriteUInt16(value);
 
         public void WriteInt16(short value)
         {
@@ -103,6 +105,17 @@ public static class BufferWriterExtensions
             var span = w.GetSpan(byteCount);
             Encoding.UTF8.GetBytes(value, span);
             w.Advance(byteCount);
+        }
+        
+        public void WriteDateTime(DateTime value)
+        {
+            w.WriteInt64(value.Ticks);
+            w.WriteByte((byte)value.Kind);
+        }
+
+        public void WriteTimeSpan(TimeSpan value)
+        {
+            w.WriteInt64(value.Ticks);
         }
     }
 }
