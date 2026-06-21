@@ -1,23 +1,23 @@
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace Serialization.RuntimeSerializers.StructSerialization;
 
-internal static class BlittableStructSerializer 
+internal static class UnmanagedStructSerializer 
 {
-    public static Span<byte> Serialize<T>(ref T value) where T : struct
+    public static ReadOnlySpan<byte> Serialize<T>(ref T value) where T : struct
     {
-        var span = MemoryMarshal.CreateSpan(ref value, 1);
-        return MemoryMarshal.AsBytes(span);
+        var bytes = new byte[Unsafe.SizeOf<T>()];
+        MemoryMarshal.Write(bytes, value);
+        return bytes;
     }
 
     public static void Serialize<T>(byte[] buffer, int offset, ref T value) where T : struct
     {
-        var span = MemoryMarshal.CreateSpan(ref value, 1);
-        var bytes = MemoryMarshal.AsBytes(span);
-        bytes.CopyTo(buffer.AsSpan(offset));
+        MemoryMarshal.Write(buffer.AsSpan(offset), value);
     }
     
-    public static byte[] Serialize(Type type, object value)
+    public static ReadOnlySpan<byte> Serialize(Type type, object value)
     {
         var size = TypeMetadata.GetStructSize(type);
 
@@ -35,7 +35,7 @@ internal static class BlittableStructSerializer
         return buffer;
     }
     
-    public static T Deserialize<T>(Span<byte> data) where T : struct
+    public static T Deserialize<T>(byte[] data) where T : struct
     {
         return MemoryMarshal.Read<T>(data);
     }

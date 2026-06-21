@@ -1,7 +1,8 @@
 using FluentAssertions;
 using Serialization.RuntimeSerializers;
+using Serialization.RuntimeSerializers.ObjectSerialization;
 
-namespace Test;
+namespace Test.RuntimeSerializers;
 
 public class RuntimeSerializerTest
 {

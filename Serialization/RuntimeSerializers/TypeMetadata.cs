@@ -1,31 +1,39 @@
-using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
 namespace Serialization.RuntimeSerializers;
 
 internal static class TypeMetadata
 {
-    private static readonly Dictionary<Type, PropertyAccessor[]> _classMembers = [];
+    private static readonly Dictionary<Type, MemberAccessor[]> _classMembers = [];
     private static readonly Dictionary<Type, StructData> _structs = [];
-
-    public static PropertyAccessor[] GetProperties<T>()
-        => GetProperties(typeof(T));
     
-    public static PropertyAccessor[] GetProperties(Type type)
+    public static MemberAccessor[] GetMembers<T>()
+        => GetMembers(typeof(T));
+    
+    public static MemberAccessor[] GetMembers(Type type)
     {
         if (_classMembers.TryGetValue(type, out var accessors))
             return accessors;
         
         var props = type
-            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .GetProperties(Consts.BindingFlag)
             .Where(p => p.CanRead && p.CanWrite)
-            .Select(PropertyAccessor.Create)
+            .Select(MemberAccessor.Create)
             .ToArray();
         
-        _classMembers[type] = props;
-        return props;
+        var fields = type
+            .GetFields(Consts.BindingFlag)
+            .Where(f => 
+                !f.IsInitOnly 
+                && !f.IsLiteral
+                && f.GetCustomAttribute<CompilerGeneratedAttribute>() is null)
+            .Select(MemberAccessor.Create);
+        
+        var result = props.Concat(fields).ToArray();
+
+        _classMembers[type] = result;
+        return result;
     }
     
     public static int GetStructSize(Type type)
@@ -47,34 +55,41 @@ internal static class TypeMetadata
         return (int)result;
     }
 
-    public static bool IsBlittable(Type type)
+    public static bool IsUnmanaged<T>()
     {
-        if (_structs.TryGetValue(type, out var data) && data.IsBlittable.HasValue)
-            return data.IsBlittable.Value;
+        if (!typeof(T).IsValueType)
+            return false;
+        
+        if (_structs.TryGetValue(typeof(T), out var data) && data.IsUnmanaged.HasValue)
+            return data.IsUnmanaged.Value;
         
         if (data is null)
-            _structs[type] = new StructData();
+            _structs[typeof(T)] = new StructData();
         
-        if (type.IsArray)
-        {
-            var elem = type.GetElementType();
-            return elem is not null && elem.IsValueType && IsBlittable(elem);
-        }
+        var result = !RuntimeHelpers.IsReferenceOrContainsReferences<T>();
+        _structs[typeof(T)].IsUnmanaged = result;
+        
+        return result;
+    }
 
-        try
+    public static bool IsUnmanaged(Type type)
+    {
+        if (!type.IsValueType)
+            return false;
+
+        if (_structs.TryGetValue(type, out var data) && data.IsUnmanaged.HasValue)
+            return data.IsUnmanaged.Value;
+
+        if (data is null)
+            _structs[type] = new StructData();
+
+        if (GetMembers(type).Any(member => !IsUnmanaged(member.Type)))
         {
-            object? instance = Activator.CreateInstance(type);
-            GCHandle.Alloc(instance, GCHandleType.Pinned).Free();
-            
-            _structs[type].IsBlittable = true;
-        
-            return true;
-        }
-        catch (ArgumentException)
-        {
-            _structs[type].IsBlittable = false;
-            
+            _structs[type].IsUnmanaged = false;
             return false;
         }
+
+        _structs[type].IsUnmanaged = true;
+        return true;
     }
 }
