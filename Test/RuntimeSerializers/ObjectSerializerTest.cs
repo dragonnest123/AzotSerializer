@@ -1,10 +1,9 @@
 using FluentAssertions;
-using Serialization.RuntimeSerializers;
 using Serialization.RuntimeSerializers.ObjectSerialization;
 
 namespace Test.RuntimeSerializers;
 
-public class RuntimeSerializerTest
+public class ObjectSerializerTest
 {
     [Fact]
     public void Serialize_SimpleClass()

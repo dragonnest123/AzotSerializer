@@ -3,7 +3,7 @@ using Xunit.Abstractions;
 
 namespace Test;
 
-public class SerializerTest
+public class GeneratedSerializerTest
 {
     [Fact]
     public void Serialize_SimpleClass()
