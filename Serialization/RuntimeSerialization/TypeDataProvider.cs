@@ -1,11 +1,12 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
 namespace Serialization.RuntimeSerialization;
 
-internal static class TypeMetadata
+internal static class TypeDataProvider
 {
-    private static readonly Dictionary<Type, MemberAccessor[]> _classMembers = [];
+    private static readonly Dictionary<Type, ObjectData> _objects = [];
     private static readonly Dictionary<Type, StructData> _structs = [];
     
     public static MemberAccessor[] GetMembers<T>()
@@ -13,8 +14,8 @@ internal static class TypeMetadata
     
     public static MemberAccessor[] GetMembers(Type type)
     {
-        if (_classMembers.TryGetValue(type, out var accessors))
-            return accessors;
+        if (_objects.TryGetValue(type, out var objectData) && objectData.Accessors is not null)
+            return objectData.Accessors;
         
         var props = type
             .GetProperties(Consts.BindingFlag)
@@ -32,7 +33,10 @@ internal static class TypeMetadata
         
         var result = props.Concat(fields).ToArray();
 
-        _classMembers[type] = result;
+        if (objectData is null)
+            _objects[type] = new ObjectData { Accessors = result };
+        else
+            _objects[type].Accessors = result;
         return result;
     }
     
@@ -63,11 +67,12 @@ internal static class TypeMetadata
         if (_structs.TryGetValue(typeof(T), out var data) && data.IsUnmanaged.HasValue)
             return data.IsUnmanaged.Value;
         
-        if (data is null)
-            _structs[typeof(T)] = new StructData();
-        
         var result = !RuntimeHelpers.IsReferenceOrContainsReferences<T>();
-        _structs[typeof(T)].IsUnmanaged = result;
+        
+        if (data is null)
+            _structs[typeof(T)] = new StructData { IsUnmanaged = result };
+        else
+            _structs[typeof(T)].IsUnmanaged = result;
         
         return result;
     }
@@ -81,15 +86,40 @@ internal static class TypeMetadata
             return data.IsUnmanaged.Value;
 
         if (data is null)
-            _structs[type] = new StructData();
+            _structs[type] = new StructData { IsUnmanaged = false };
 
         if (GetMembers(type).Any(member => !IsUnmanaged(member.Type)))
-        {
-            _structs[type].IsUnmanaged = false;
             return false;
-        }
 
         _structs[type].IsUnmanaged = true;
+        return true;
+    }
+    
+    public static bool CanBeNull(Type type)
+        => !type.IsValueType || Nullable.GetUnderlyingType(type) != null;
+    
+    public static bool IsCollection<T>([NotNullWhen(true)] out Type? collectionInterface)
+        => IsCollection(typeof(T), out collectionInterface);
+
+    public static bool IsCollection(Type type, [NotNullWhen(true)] out Type? collectionInterface)
+    {
+        if (_objects.TryGetValue(type, out var objectData) && objectData.CollectionInterfaceType is not null)
+        {
+            collectionInterface = objectData.CollectionInterfaceType;
+            return true;
+        }
+        
+        if (objectData is null)
+            _objects[type] = new ObjectData();
+
+        collectionInterface = type
+            .GetInterfaces()
+            .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ICollection<>));
+        
+        if (collectionInterface is null)
+            return false;
+        
+        _objects[type].CollectionInterfaceType = collectionInterface;
         return true;
     }
 }

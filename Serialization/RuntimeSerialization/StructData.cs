@@ -1,4 +1,4 @@
-namespace Serialization.RuntimeSerializers;
+namespace Serialization.RuntimeSerialization;
 
 internal class StructData
 {

@@ -1,8 +1,7 @@
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 
-namespace Serialization.RuntimeSerializers;
+namespace Serialization.RuntimeSerialization;
 
 internal class MemberAccessor
 {
@@ -11,48 +10,50 @@ internal class MemberAccessor
     public required Action<object, object?> Setter { get; init; }
 
     public static MemberAccessor Create(PropertyInfo property)
-    {
-        var (getter, setter) = BuildAccessor(property.DeclaringType!, obj => Expression.Property(obj, property));
-
-        return new MemberAccessor
+        => new() 
         {
             Type = property.PropertyType,
-            Getter = getter,
-            Setter = setter
+            Getter = BuildGetDelegate<object?>(property.DeclaringType!, property.Name),
+            Setter = BuildSetDelegate(property.DeclaringType!, property.Name)
         };
-    }
 
     public static MemberAccessor Create(FieldInfo field)
-    {
-        var (getter, setter) = BuildAccessor(field.DeclaringType!, obj => Expression.Field(obj, field));
-
-        return new MemberAccessor
+        => new()
         {
             Type = field.FieldType,
-            Getter = getter,
-            Setter = setter
+            Getter = BuildGetDelegate<object?>(field.DeclaringType!, field.Name),
+            Setter = BuildSetDelegate(field.DeclaringType!, field.Name)
         };
+
+    public static Func<object, T> BuildGetDelegate<T>(Type declaredType, string memberName)
+    {
+        var objParam = Expression.Parameter(typeof(object), "obj");
+        
+        var owner = BuildOwner(objParam, declaredType);
+        var member = Expression.PropertyOrField(owner, memberName);
+        
+        Expression result = typeof(T) == typeof(object) || member.Type.IsValueType
+            ? Expression.Convert(member, typeof(T))
+            : member;
+        
+        return Expression.Lambda<Func<object, T>>(result, objParam).Compile();
     }
 
-    private static (Func<object, object?>, Action<object, object?>) BuildAccessor(
-        Type declaringType, Func<Expression, MemberExpression> memberSelector)
+    public static Action<object, object?> BuildSetDelegate(Type declaredType, string memberName)
     {
         var objParam = Expression.Parameter(typeof(object), "obj");
         var valueParam = Expression.Parameter(typeof(object), "value");
         
-        var objectRealType = declaringType.IsValueType 
-            ? Expression.Unbox(objParam, declaringType) 
-            : Expression.Convert(objParam, declaringType);
+        var owner = BuildOwner(objParam, declaredType);
+        var member = Expression.PropertyOrField(owner, memberName);
         
-        var memberExp = memberSelector(objectRealType);
-
-        var getter = Expression.Lambda<Func<object, object?>>(
-            Expression.Convert(memberExp, typeof(object)), objParam).Compile();
-
-        var setter = Expression.Lambda<Action<object, object?>>(
-            Expression.Assign(memberExp, Expression.Convert(valueParam, memberExp.Type)),
-            objParam, valueParam).Compile();
-
-        return (getter, setter);
+        var assign = Expression.Assign(member, Expression.Convert(valueParam, member.Type));
+        
+        return Expression.Lambda<Action<object, object?>>(assign, objParam, valueParam).Compile();
     }
+
+    private static UnaryExpression BuildOwner(ParameterExpression objParam, Type declaredType)
+        => declaredType.IsValueType
+            ? Expression.Unbox(objParam, declaredType)
+            : Expression.Convert(objParam, declaredType);
 }

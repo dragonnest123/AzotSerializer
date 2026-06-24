@@ -1,93 +1,195 @@
 using System.Buffers;
+using System.Collections;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq.Expressions;
+using System.Reflection;
 using Serialization.Extensions;
-using Serialization.RuntimeSerializers.StructSerialization;
 
-namespace Serialization.RuntimeSerializers.ObjectSerialization;
+namespace Serialization.RuntimeSerialization.Serializers;
 
 internal static class InternalObjectSerializer
 {
+    private static readonly Dictionary<Type, Action<object, ArrayBufferWriter<byte>>> _cacheSerializers = new();
+    private static readonly ThreadLocal<HashSet<object>> _visited = 
+        new(() => new HashSet<object>(ReferenceEqualityComparer.Instance));
+
     public static ReadOnlySpan<byte> Serialize(Type type, object obj)
     {
         var writer = new ArrayBufferWriter<byte>();
-        
-        SerializeObject(type, obj, writer);
 
+        GetOrBuildSerializer(type)(obj, writer);
+        
         return writer.WrittenSpan;
     }
     
-    private static void SerializeObject(Type type, object obj, ArrayBufferWriter<byte> writer)
+    public static Action<object, ArrayBufferWriter<byte>> GetOrBuildSerializer(Type type)
+    {
+        if (_cacheSerializers.TryGetValue(type, out var cachedSerializer))
+            return cachedSerializer;
+        
+        Action<object, ArrayBufferWriter<byte>>? serializer = null;
+        _cacheSerializers[type] = (obj, writer) => serializer(obj, writer);
+
+        serializer = BuildObjectSerializer(type);
+
+        return serializer;
+    }
+    
+    private static Action<object, ArrayBufferWriter<byte>> BuildObjectSerializer(Type type)
     {
         var notNullableType = Nullable.GetUnderlyingType(type) ?? type;
     
-        if (TrySerializeSupportedType(notNullableType, obj, writer))
-            return;
+        if (TryBuildSupportedTypeSerializer(notNullableType, out var serializer) 
+            || SpecificTypeSerializer.TryBuildSpecificTypeSerializer(notNullableType, out serializer) 
+            || TryBuildCollectionSerializer(notNullableType, out serializer))
+            return serializer;
 
-        SerializeMembers(notNullableType, obj, writer);
+        return BuildMembersSerializer(type);
     }
     
-    private static void SerializeMembers(Type type, object obj, ArrayBufferWriter<byte> writer)
+    private static Action<object, ArrayBufferWriter<byte>> BuildMembersSerializer(Type type)
     {
-        var props = TypeMetadata.GetMembers(type);
-        foreach (var accessor in props)
-        {
-            var prop = accessor.Getter.Invoke(obj);
-            SerializeMember(accessor.Type, prop, writer);
-        }
-    }
-    
-    private static void SerializeMember(Type type, object? obj, ArrayBufferWriter<byte> writer)
-    {
-        if (obj is null)
-        {
-            writer.WriteByte(0);
-            return;
-        }
-        writer.WriteByte(1);
-
-        SerializeObject(type, obj, writer); 
-    }
-    
-    private static bool TrySerializeStructure(Type type, object obj, ArrayBufferWriter<byte> writer)
-    {
-        if (!type.IsValueType)
-            return false;
+        var memberSerializers = type
+            .GetMembers()
+            .Where(x => x is PropertyInfo or FieldInfo)
+            .Select(BuildMemberSerializer)
+            .ToArray();
         
-        var serialized = StructSerializer.Serialize(type, obj);
-        writer.Write(serialized);
-        return true;
+        return (obj, writer) =>
+        {
+            if (!_visited.Value!.Add(obj))
+                return;
+
+            try
+            {
+                foreach (var serializer in memberSerializers)
+                    serializer(obj, writer);
+            }
+            finally
+            {
+                _visited.Value!.Remove(obj);
+            }
+        };
     }
     
-    private static bool TrySerializeSupportedType(Type type, object obj, ArrayBufferWriter<byte> writer)
+    private static Action<object?, ArrayBufferWriter<byte>> BuildMemberSerializer(MemberInfo member)
     {
+        var objParam = Expression.Parameter(typeof(object), "obj");
+        var writerParam = Expression.Parameter(typeof(ArrayBufferWriter<byte>), "writer");
+        
+        var castedObject = member.DeclaringType!.IsValueType 
+            ? Expression.Unbox(objParam, member.DeclaringType) 
+            : Expression.Convert(objParam, member.DeclaringType);
+        
+        var memberExp = Expression.PropertyOrField(castedObject, member.Name);
+        var notNullableType = Nullable.GetUnderlyingType(memberExp.Type) ?? memberExp.Type;
+        
+        var writeByteMethod = typeof(BufferWriterExtensions).GetMethod(nameof(BufferWriterExtensions.WriteByte))
+            ?? throw new ArgumentException($"{nameof(BufferWriterExtensions)} doesn't contain WriteByte method");
+        
+        var serializer = Expression.Constant(GetOrBuildSerializer(notNullableType));
+        var serializerInvoke = Expression.Invoke(
+            serializer, 
+            Expression.Convert(memberExp, typeof(object)), 
+            writerParam);
+
+        Expression body;
+        
+        bool canBeNull = !memberExp.Type.IsValueType || Nullable.GetUnderlyingType(memberExp.Type) is not null;
+        if (canBeNull)
+            body = Expression.IfThenElse(
+                Expression.Equal(memberExp, Expression.Constant(null)),
+                Expression.Call(writeByteMethod, writerParam, Expression.Constant((byte)0)),
+                Expression.Block(
+                    Expression.Call(writeByteMethod, writerParam, Expression.Constant((byte)1)),
+                    serializerInvoke));
+        else
+            body = serializerInvoke;
+                
+        return Expression.Lambda<Action<object?, ArrayBufferWriter<byte>>>(body, objParam, writerParam)
+            .Compile();
+    }
+    
+    private static bool TryBuildSupportedTypeSerializer(
+        Type type, 
+        [NotNullWhen(true)] out Action<object, ArrayBufferWriter<byte>>? serializer)
+    {
+        if (type == typeof(bool))        { serializer = (o, w) => w.WriteBool((bool)o);         return true; }
+        if (type == typeof(byte))        { serializer = (o, w) => w.WriteByte((byte)o);         return true; }
+        if (type == typeof(sbyte))       { serializer = (o, w) => w.WriteSByte((sbyte)o);       return true; }
+        if (type == typeof(short))       { serializer = (o, w) => w.WriteInt16((short)o);       return true; }
+        if (type == typeof(ushort))      { serializer = (o, w) => w.WriteUInt16((ushort)o);     return true; }
+        if (type == typeof(char))        { serializer = (o, w) => w.WriteChar((char)o);         return true; }
+        if (type == typeof(int))         { serializer = (o, w) => w.WriteInt32((int)o);         return true; }
+        if (type == typeof(uint))        { serializer = (o, w) => w.WriteUInt32((uint)o);       return true; }
+        if (type == typeof(long))        { serializer = (o, w) => w.WriteInt64((long)o);        return true; }
+        if (type == typeof(ulong))       { serializer = (o, w) => w.WriteUInt64((ulong)o);      return true; }
+        if (type == typeof(float))       { serializer = (o, w) => w.WriteSingle((float)o);      return true; }
+        if (type == typeof(double))      { serializer = (o, w) => w.WriteDouble((double)o);     return true; }
+        if (type == typeof(decimal))     { serializer = (o, w) => w.WriteDecimal((decimal)o);   return true; }
+        if (type == typeof(string))      { serializer = (o, w) => w.WriteString((string)o);     return true; }
+        if (type == typeof(DateTime))    { serializer = (o, w) => w.WriteDateTime((DateTime)o); return true; }
+        if (type == typeof(TimeSpan))    { serializer = (o, w) => w.WriteTimeSpan((TimeSpan)o); return true; }
+
         if (type.IsEnum)
         {
             var underlyingType = Enum.GetUnderlyingType(type);
-            obj = Convert.ChangeType(obj, underlyingType);
+            var underlyingSerializer = GetOrBuildSerializer(underlyingType);
+            serializer = (o, w) => underlyingSerializer(Convert.ChangeType(o, underlyingType), w);
+            return true;
         }
-        
-        switch (obj)
-        {
-            case bool b:       writer.WriteBool(b);       return true;
-            case byte b:       writer.WriteByte(b);       return true;
-            case sbyte b:      writer.WriteSByte(b);      return true;
-            case short s:      writer.WriteInt16(s);      return true;
-            case ushort s:     writer.WriteUInt16(s);     return true;
-            case char c:       writer.WriteChar(c);       return true;
-            case int i:        writer.WriteInt32(i);      return true;
-            case uint i:       writer.WriteUInt32(i);     return true;
-            case long l:       writer.WriteInt64(l);      return true;
-            case ulong l:      writer.WriteUInt64(l);     return true;
-            case float f:      writer.WriteSingle(f);     return true;
-            case double d:     writer.WriteDouble(d);     return true;
-            case decimal d:    writer.WriteDecimal(d);    return true;
-            case string s:     writer.WriteString(s);     return true;
-            case DateTime dt:  writer.WriteDateTime(dt);  return true;
-            case TimeSpan ts:  writer.WriteTimeSpan(ts);  return true;
-        }
-        
-        // if (TrySerializeStructure(type, obj, writer))
-        //     return true;
-        
+
+        serializer = null;
         return false;
     }
-}
+
+    private static bool TryBuildCollectionSerializer(
+        Type type, 
+        [NotNullWhen(true)] out Action<object, ArrayBufferWriter<byte>>? serializer)
+    {
+        if (!TypeDataProvider.IsCollection(type, out var collectionType))
+        {
+            serializer = null;   
+            return false;
+        }
+        
+        var elementType = collectionType.GetGenericArguments()[0];
+        var elementSerializer = GetOrBuildSerializer(elementType);
+        bool elementCanBeNull = !elementType.IsValueType || Nullable.GetUnderlyingType(elementType) != null;
+
+        var countGetter = BuildCountPropertyDelegate(elementType);
+        serializer = (obj, writer) =>
+        {
+            writer.WriteInt32(countGetter(obj));
+
+            if (elementCanBeNull)
+            {
+                foreach (var element in (IEnumerable)obj)
+                {
+                    if (element is null)
+                    {
+                        writer.WriteByte(0);
+                        continue;
+                    }
+
+                    writer.WriteByte(1);
+                    elementSerializer(element, writer);
+                }
+            }
+            else
+            {
+                foreach (var element in (IEnumerable)obj)
+                    elementSerializer(element, writer);
+            }
+        };
+
+        return true;
+    }
+
+    private static Func<object, int> BuildCountPropertyDelegate(Type elementType)
+    {
+        var collectionType = typeof(ICollection<>).MakeGenericType(elementType);
+
+        return MemberAccessor.BuildGetDelegate<int>(collectionType, "Count");
+    }
+} 

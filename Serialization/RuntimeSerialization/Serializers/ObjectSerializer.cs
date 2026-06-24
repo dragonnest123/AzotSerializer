@@ -1,4 +1,4 @@
-namespace Serialization.RuntimeSerializers.ObjectSerialization;
+namespace Serialization.RuntimeSerialization.Serializers;
 
 public static class ObjectSerializer
 {

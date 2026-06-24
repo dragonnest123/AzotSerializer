@@ -1,107 +1,228 @@
+using System.Collections;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq.Expressions;
+using System.Reflection;
 using Serialization.Extensions;
-using Serialization.RuntimeSerializers.StructSerialization;
 
-namespace Serialization.RuntimeSerializers.ObjectSerialization;
+namespace Serialization.RuntimeSerialization.Serializers;
+
+internal delegate object? DeserializerDelegate(ref ReadOnlySpan<byte> buffer);
 
 internal static class InternalObjectDeserializer
 {
+    private delegate void MemberDeserializerDelegate(object target, ref ReadOnlySpan<byte> buffer);
+    
+    private static readonly Dictionary<Type, DeserializerDelegate> _cacheDeserializers = new();
+
     public static object? Deserialize(Type type, byte[] data)
     {
         ReadOnlySpan<byte> span = data.AsSpan();
-        
-        return DeserializeObject(type, ref span);
-    }  
+        return GetOrBuildDeserializer(type)(ref span);
+    }
 
-    private static object? DeserializeObject(Type type, ref ReadOnlySpan<byte> buffer)
+    public static DeserializerDelegate GetOrBuildDeserializer(Type type)
+    {
+        if (_cacheDeserializers.TryGetValue(type, out var cached))
+            return cached;
+
+        DeserializerDelegate? deserializer = null;
+        _cacheDeserializers[type] = (ref buffer) => deserializer!(ref buffer);
+
+        deserializer = BuildObjectDeserializer(type);
+
+        return deserializer;
+    }
+
+    private static DeserializerDelegate BuildObjectDeserializer(Type type)
     {
         var notNullableType = Nullable.GetUnderlyingType(type) ?? type;
-        if (TryDeserializeSupportedType(notNullableType, ref buffer, out var obj))
-            return obj;
 
-        return DeserializeObjectMembers(notNullableType, ref buffer);
+        if (TryBuildSupportedTypeDeserializer(notNullableType, out var deserializer)
+            || SpecificTypeSerializer.TryBuildSpecificTypeDeserializer(notNullableType, out deserializer)
+            || TryBuildCollectionDeserializer(notNullableType, out deserializer))
+            return deserializer;
+
+        return BuildMembersDeserializer(notNullableType);
     }
 
-    private static object DeserializeObjectMembers(Type type, ref ReadOnlySpan<byte> buffer)
+    private static DeserializerDelegate BuildMembersDeserializer(Type type)
     {
-        var props = TypeMetadata.GetMembers(type);
-        var result = Activator.CreateInstance(type) 
-                     ?? throw new InvalidOperationException("Could not create instance of type " + type.FullName);
-        
-        foreach (var accessor in props)
+        var members = type
+            .GetMembers()
+            .Where(x => x is PropertyInfo or FieldInfo)
+            .Select(BuildMemberDeserializer)
+            .ToArray();
+
+        return (ref buffer) =>
         {
-            var deserializedValue = DeserializeMember(accessor.Type, ref buffer);
-            accessor.Setter.Invoke(result, deserializedValue);
-        }
+            var result = Activator.CreateInstance(type)
+                         ?? throw new InvalidOperationException("Could not create instance of type " + type.FullName);
 
-        return result;
-    }
-    
-    private static object? DeserializeMember(Type type, ref ReadOnlySpan<byte> buffer)
-    {
-        bool hasValue = buffer.ReadBool();
-        if (!hasValue)
-            return null;
+            foreach (var memberDeserializer in members)
+                memberDeserializer(result, ref buffer);
 
-        return DeserializeObject(type, ref buffer);
+            return result;
+        };
     }
 
-    private static bool TryDeserializeStructure(Type type, ref ReadOnlySpan<byte> buffer, out object? obj)
+    private static MemberDeserializerDelegate BuildMemberDeserializer(MemberInfo member)
     {
-        if (!type.IsValueType)
+        var targetParam = Expression.Parameter(typeof(object), "target");
+        var bufferParam = Expression.Parameter(typeof(ReadOnlySpan<byte>).MakeByRefType(), "buffer");
+
+        var memberType = member switch
         {
-            obj = null;
-            return false;
+            PropertyInfo p => p.PropertyType,
+            FieldInfo f => f.FieldType,
+            _ => throw new ArgumentException("Unsupported member type")
+        };
+
+        var notNullableType = Nullable.GetUnderlyingType(memberType) ?? memberType;
+        bool canBeNull = !memberType.IsValueType || Nullable.GetUnderlyingType(memberType) != null;
+
+        var innerDeserializer = Expression.Constant(GetOrBuildDeserializer(notNullableType));
+
+        var castedTarget = member.DeclaringType!.IsValueType
+            ? Expression.Unbox(targetParam, member.DeclaringType)
+            : Expression.Convert(targetParam, member.DeclaringType);
+
+        var memberExp = Expression.PropertyOrField(castedTarget, member.Name);
+
+        var deserializerInvoke = Expression.Convert(
+            Expression.Invoke(innerDeserializer, bufferParam),
+            memberType);
+
+        Expression body;
+
+        if (canBeNull)
+        {
+            var readBoolMethod = typeof(SpanReaderExtensions).GetMethod(nameof(SpanReaderExtensions.ReadBool))
+                                 ?? throw new ArgumentException("ReadBool method not found");
+
+            var hasValue = Expression.Call(readBoolMethod, bufferParam);
+
+            body = Expression.IfThenElse(
+                hasValue,
+                Expression.Assign(memberExp, deserializerInvoke),
+                Expression.Assign(memberExp, Expression.Default(memberType)));
         }
+        else
+            body = Expression.Assign(memberExp, deserializerInvoke);
         
-        var structBytes = buffer.ReadBytes(TypeMetadata.GetStructSize(type));
-        obj = StructSerializer.Deserialize(type, structBytes.ToArray());
-        return true;
+        return Expression.Lambda<MemberDeserializerDelegate>(body, targetParam, bufferParam)
+            .Compile();
     }
-    
-    private static bool TryDeserializeSupportedType(Type type, ref ReadOnlySpan<byte> buffer, out object? obj)
+
+
+    private static bool TryBuildSupportedTypeDeserializer(
+        Type type,
+        [NotNullWhen(true)] out DeserializerDelegate? deserializer)
     {
+        if (type == typeof(bool))     { deserializer = (ref b) => b.ReadBool();     return true; }
+        if (type == typeof(byte))     { deserializer = (ref b) => b.ReadByte();     return true; }
+        if (type == typeof(sbyte))    { deserializer = (ref b) => b.ReadSByte();    return true; }
+        if (type == typeof(short))    { deserializer = (ref b) => b.ReadInt16();    return true; }
+        if (type == typeof(ushort))   { deserializer = (ref b) => b.ReadUInt16();   return true; }
+        if (type == typeof(char))     { deserializer = (ref b) => b.ReadChar();     return true; }
+        if (type == typeof(int))      { deserializer = (ref b) => b.ReadInt32();    return true; }
+        if (type == typeof(uint))     { deserializer = (ref b) => b.ReadUInt32();   return true; }
+        if (type == typeof(long))     { deserializer = (ref b) => b.ReadInt64();    return true; }
+        if (type == typeof(ulong))    { deserializer = (ref b) => b.ReadUInt64();   return true; }
+        if (type == typeof(float))    { deserializer = (ref b) => b.ReadSingle();   return true; }
+        if (type == typeof(double))   { deserializer = (ref b) => b.ReadDouble();   return true; }
+        if (type == typeof(decimal))  { deserializer = (ref b) => b.ReadDecimal();  return true; }
+        if (type == typeof(string))   { deserializer = (ref b) => b.ReadString();   return true; }
+        if (type == typeof(DateTime)) { deserializer = (ref b) => b.ReadDateTime(); return true; }
+        if (type == typeof(TimeSpan)) { deserializer = (ref b) => b.ReadTimeSpan(); return true; }
+
         if (type.IsEnum)
         {
             var underlyingType = Enum.GetUnderlyingType(type);
-            TryDeserializeSupportedType(underlyingType, ref buffer, out var enumValue);
-            if (enumValue == null)
-                throw new Exception("Could not deserialize Enum");
-            
-            obj = Enum.ToObject(type, enumValue);
+            var underlyingDeserializer = GetOrBuildDeserializer(underlyingType);
+            deserializer = (ref b) =>
+            {
+                var value = underlyingDeserializer(ref b)
+                            ?? throw new Exception("Could not deserialize Enum");
+                return Enum.ToObject(type, value);
+            };
             return true;
         }
+
+        deserializer = null;
+        return false;
+    }
+
+    private static bool TryBuildCollectionDeserializer(
+        Type type,
+        [NotNullWhen(true)] out DeserializerDelegate? deserializer)
+    {
+        if (!TypeDataProvider.IsCollection(type, out var collectionType))
+        {
+            deserializer = null;
+            return false;
+        }
+
+        var elementType = collectionType.GetGenericArguments()[0];
+        var elementDeserializer = GetOrBuildDeserializer(elementType);
+        bool elementCanBeNull = !elementType.IsValueType || Nullable.GetUnderlyingType(elementType) != null;
         
-        obj = Type.GetTypeCode(type) switch
+        var addItem = BuildAddDelegate(elementType);
+
+        deserializer = (ref buffer) =>
         {
-            TypeCode.Int32    => buffer.ReadInt32(),
-            TypeCode.UInt32   => buffer.ReadUInt32(),
-            TypeCode.Int16    => buffer.ReadInt16(),
-            TypeCode.UInt16   => buffer.ReadUInt16(),
-            TypeCode.Int64    => buffer.ReadInt64(),
-            TypeCode.UInt64   => buffer.ReadUInt64(),
-            TypeCode.Single   => buffer.ReadSingle(),
-            TypeCode.Double   => buffer.ReadDouble(),
-            TypeCode.Boolean  => buffer.ReadBool(),
-            TypeCode.String   => buffer.ReadString(),
-            TypeCode.Byte     => buffer.ReadByte(),
-            TypeCode.SByte    => buffer.ReadSByte(),
-            TypeCode.Decimal  => buffer.ReadDecimal(),
-            TypeCode.Char     => buffer.ReadChar(),
-            TypeCode.DateTime => buffer.ReadDateTime(),
-            _                 => null
+            var collection = Activator.CreateInstance(type)!;
+
+            int count = buffer.ReadInt32();
+            for (int i = 0; i < count; i++)
+            {
+                object? item;
+
+                if (elementCanBeNull)
+                {
+                    bool hasValue = buffer.ReadBool();
+                    item = hasValue
+                        ? elementDeserializer(ref buffer)
+                        : null;
+                }
+                else
+                {
+                    item = elementDeserializer(ref buffer);
+                }
+
+                addItem(collection, item);
+            }
+
+            return collection;
         };
-        if (obj != null)
-            return true;
+        
+        return true;
+    }
+    
+    private static Action<object, object?> BuildAddDelegate(Type elementType)
+    {
+        var collectionParam = Expression.Parameter(typeof(object));
+        var itemParam = Expression.Parameter(typeof(object));
 
-        if (type == typeof(TimeSpan))
-        {
-            obj = buffer.ReadTimeSpan();
-            return true;
-        }
+        var castCollection = Expression.Convert(
+            collectionParam,
+            typeof(ICollection<>).MakeGenericType(elementType));
 
-        // if (TryDeserializeStructure(type, ref buffer, out obj))
-        //     return true;
+        var castItem = Expression.Convert(itemParam, elementType);
 
-        return obj != null;
+        var addMethod = typeof(ICollection<>)
+            .MakeGenericType(elementType)
+            .GetMethod(nameof(ICollection<>.Add))!;
+
+        var body = Expression.Call(
+            castCollection,
+            addMethod,
+            castItem);
+
+        return Expression
+            .Lambda<Action<object, object?>>(
+                body,
+                collectionParam,
+                itemParam)
+            .Compile();
     }
 }

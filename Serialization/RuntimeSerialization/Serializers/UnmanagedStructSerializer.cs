@@ -1,7 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace Serialization.RuntimeSerializers.StructSerialization;
+namespace Serialization.RuntimeSerialization.Serializers;
 
 internal static class UnmanagedStructSerializer 
 {
@@ -19,7 +19,7 @@ internal static class UnmanagedStructSerializer
     
     public static ReadOnlySpan<byte> Serialize(Type type, object value)
     {
-        var size = TypeMetadata.GetStructSize(type);
+        var size = TypeDataProvider.GetStructSize(type);
 
         var buffer = new byte[size];
         var handle = GCHandle.Alloc(value, GCHandleType.Pinned);
