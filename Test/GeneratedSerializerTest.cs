@@ -31,12 +31,21 @@ public class GeneratedSerializerTest
     [Fact]
     public void Serialize_ClassWithCollection()
     {
-        var classWithCollection = ClassFactory.CreateClassWithCollection();
+        var classWithList = ClassFactory.CreateClassWithList();
+        var classWithHashSet = ClassFactory.CreateClassWithHashSet();
+        var classWithDictionary = ClassFactory.CreateClassWithDictionary();
         
-        var serialized = classWithCollection.Serialize();
-        var deserialized = ClassWithCollection.Deserialize(ref serialized);
+        var serializedList = classWithList.Serialize();
+        var serializedHashSet = classWithHashSet.Serialize();
+        var serializedDictionary = classWithDictionary.Serialize();
         
-        classWithCollection.Should().BeEquivalentTo(deserialized);
+        var deserializedList = ClassWithList.Deserialize(ref serializedList);
+        var deserializedHashSet = ClassWithHashSet.Deserialize(ref serializedHashSet);
+        var deserializedDictionary = ClassWithDictionary.Deserialize(ref serializedDictionary);
+
+        classWithList.Should().BeEquivalentTo(deserializedList);
+        classWithHashSet.Should().BeEquivalentTo(deserializedHashSet);
+        classWithDictionary.Should().BeEquivalentTo(deserializedDictionary);
  
         //TODO: попробовать другие коллекции помимо List, попробовать не примитвные объекты в качестве элементов коллекции
         //TODO: в частности интересно что будет с object

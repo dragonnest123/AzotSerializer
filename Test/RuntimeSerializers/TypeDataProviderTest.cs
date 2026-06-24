@@ -1,9 +1,9 @@
 using FluentAssertions;
-using Serialization.RuntimeSerializers;
+using Serialization.RuntimeSerialization;
 
 namespace Test.RuntimeSerializers;
 
-public class TypeMetadataTest
+public class TypeDataProviderTest
 {
     private class SimpleClass
     {
@@ -62,7 +62,7 @@ public class TypeMetadataTest
         [Fact]
         public void GetMembers_Returns_ReadWriteProperties()
         {
-            var props = TypeMetadata.GetMembers(typeof(SimpleClass));
+            var props = TypeDataProvider.GetMembers(typeof(SimpleClass));
 
             props.Should().HaveCount(3);
             props.Select(p => p.Type).Should().BeEquivalentTo([typeof(int), typeof(string), typeof(int)]);
@@ -71,7 +71,7 @@ public class TypeMetadataTest
         [Fact]
         public void GetMembers_Excludes_ReadOnlyProperty()
         {
-            var props = TypeMetadata.GetMembers(typeof(ClassWithReadOnlyProperty));
+            var props = TypeDataProvider.GetMembers(typeof(ClassWithReadOnlyProperty));
 
             props.Should().HaveCount(1);
         }
@@ -79,7 +79,7 @@ public class TypeMetadataTest
         [Fact]
         public void GetMembers_Excludes_WriteOnlyProperty()
         {
-            var props = TypeMetadata.GetMembers(typeof(ClassWithWriteOnlyProperty));
+            var props = TypeDataProvider.GetMembers(typeof(ClassWithWriteOnlyProperty));
 
             props.Should().HaveCount(1);
         }
@@ -87,8 +87,8 @@ public class TypeMetadataTest
         [Fact]
         public void GetMembers_Returns_SameArrayInstance_OnSecondCall()
         {
-            var first = TypeMetadata.GetMembers(typeof(SimpleClass));
-            var second = TypeMetadata.GetMembers(typeof(SimpleClass));
+            var first = TypeDataProvider.GetMembers(typeof(SimpleClass));
+            var second = TypeDataProvider.GetMembers(typeof(SimpleClass));
 
             first.Should().BeSameAs(second);
         }
@@ -96,7 +96,7 @@ public class TypeMetadataTest
         [Fact]
         public void GetMembers_Returns_EmptyArray_ForClass_WithoutProperties()
         {
-            var props = TypeMetadata.GetMembers(typeof(EmptyClass));
+            var props = TypeDataProvider.GetMembers(typeof(EmptyClass));
 
             props.Should().BeEmpty();
         }   
@@ -107,7 +107,7 @@ public class TypeMetadataTest
         [Fact]
         public void GetStructSize_ReturnsFour_ForInt()
         {
-            var size = TypeMetadata.GetStructSize(typeof(int));
+            var size = TypeDataProvider.GetStructSize(typeof(int));
 
             size.Should().Be(4);
         }
@@ -115,7 +115,7 @@ public class TypeMetadataTest
         [Fact]
         public void GetStructSize_Returns_CorrectSize_ForSimpleStruct()
         {
-            var size = TypeMetadata.GetStructSize(typeof(Point));
+            var size = TypeDataProvider.GetStructSize(typeof(Point));
 
             size.Should().Be(8);
         }
@@ -123,8 +123,8 @@ public class TypeMetadataTest
         [Fact]
         public void GetStructSize_Returns_SameValue_OnSecondCall()
         {
-            var first = TypeMetadata.GetStructSize(typeof(Point));
-            var second = TypeMetadata.GetStructSize(typeof(Point));
+            var first = TypeDataProvider.GetStructSize(typeof(Point));
+            var second = TypeDataProvider.GetStructSize(typeof(Point));
 
             first.Should().Be(second);
         }
@@ -133,7 +133,7 @@ public class TypeMetadataTest
         public void GetStructSize_ThrowsOrReturnsMinimumSize_ForEmptyStruct()
         {
             // CLR гарантирует 1 байт для пустой структуры
-            var size = TypeMetadata.GetStructSize(typeof(EmptyStruct));
+            var size = TypeDataProvider.GetStructSize(typeof(EmptyStruct));
 
             size.Should().Be(1);
         }
@@ -144,32 +144,32 @@ public class TypeMetadataTest
         [Fact]
         public void IsUnmanagedGeneric_Returns_True_ForInt()
         {
-            TypeMetadata.IsUnmanaged<int>().Should().BeTrue();
+            TypeDataProvider.IsUnmanaged<int>().Should().BeTrue();
         }
 
         [Fact]
         public void IsUnmanagedGeneric_Returns_True_For_UnmanagedStruct()
         {
-            TypeMetadata.IsUnmanaged<Point>().Should().BeTrue();
+            TypeDataProvider.IsUnmanaged<Point>().Should().BeTrue();
         }
 
         [Fact]
         public void IsUnmanagedGeneric_Returns_False_For_StructWithManagedField()
         {
-            TypeMetadata.IsUnmanaged<StructWithString>().Should().BeFalse();
+            TypeDataProvider.IsUnmanaged<StructWithString>().Should().BeFalse();
         }
 
         [Fact]
         public void IsUnmanagedGeneric_ReturnsFalse_ForClass()
         {
-            TypeMetadata.IsUnmanaged<SimpleClass>().Should().BeFalse();
+            TypeDataProvider.IsUnmanaged<SimpleClass>().Should().BeFalse();
         }
 
         [Fact]
         public void IsUnmanagedGeneric_CachesResult()
         {
-            var first = TypeMetadata.IsUnmanaged<Point>();
-            var second = TypeMetadata.IsUnmanaged<Point>();
+            var first = TypeDataProvider.IsUnmanaged<Point>();
+            var second = TypeDataProvider.IsUnmanaged<Point>();
 
             first.Should().Be(second);
         }
@@ -180,44 +180,44 @@ public class TypeMetadataTest
         [Fact]
         public void IsUnmanaged_Returns_True_For_Primitive()
         {
-            TypeMetadata.IsUnmanaged(typeof(int)).Should().BeTrue();
+            TypeDataProvider.IsUnmanaged(typeof(int)).Should().BeTrue();
         }
 
         [Fact]
         public void IsUnmanaged_Returns_False_For_Class()
         {
-            TypeMetadata.IsUnmanaged(typeof(SimpleClass)).Should().BeFalse();
+            TypeDataProvider.IsUnmanaged(typeof(SimpleClass)).Should().BeFalse();
         }
 
         [Fact]
         public void IsUnmanaged_Returns_True_For_UnmanagedStruct()
         {
-            TypeMetadata.IsUnmanaged(typeof(Point)).Should().BeTrue();
+            TypeDataProvider.IsUnmanaged(typeof(Point)).Should().BeTrue();
         }
 
         [Fact]
         public void IsUnmanaged_Returns_False_For_StructWithManagedField()
         {
-            TypeMetadata.IsUnmanaged(typeof(StructWithString)).Should().BeFalse();
+            TypeDataProvider.IsUnmanaged(typeof(StructWithString)).Should().BeFalse();
         }
 
         [Fact]
         public void IsUnmanaged_Returns_True_For_NestedUnmanagedStruct()
         {
-            TypeMetadata.IsUnmanaged(typeof(OuterStruct)).Should().BeTrue();
+            TypeDataProvider.IsUnmanaged(typeof(OuterStruct)).Should().BeTrue();
         }
 
         [Fact]
         public void IsUnmanaged_Returns_False_For_NestedManagedStruct()
         {
-            TypeMetadata.IsUnmanaged(typeof(OuterStructWithManagedInner)).Should().BeFalse();
+            TypeDataProvider.IsUnmanaged(typeof(OuterStructWithManagedInner)).Should().BeFalse();
         }
 
         [Fact]
         public void IsUnmanaged_CachesResult()
         {
-            var first = TypeMetadata.IsUnmanaged(typeof(Point));
-            var second = TypeMetadata.IsUnmanaged(typeof(Point));
+            var first = TypeDataProvider.IsUnmanaged(typeof(Point));
+            var second = TypeDataProvider.IsUnmanaged(typeof(Point));
 
             first.Should().Be(second);
         }
@@ -225,7 +225,7 @@ public class TypeMetadataTest
         [Fact]
         public void IsUnmanaged_Returns_False_For_StructWithArrayField()
         {
-            TypeMetadata.IsUnmanaged(typeof(StructWithArrayField)).Should().BeFalse();
+            TypeDataProvider.IsUnmanaged(typeof(StructWithArrayField)).Should().BeFalse();
         }
     }
 }

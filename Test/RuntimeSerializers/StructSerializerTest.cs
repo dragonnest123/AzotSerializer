@@ -1,7 +1,6 @@
 using System.Runtime.CompilerServices;
 using FluentAssertions;
-using Serialization.RuntimeSerializers;
-using Serialization.RuntimeSerializers.StructSerialization;
+using Serialization.RuntimeSerialization.Serializers;
 
 namespace Test.RuntimeSerializers;
 

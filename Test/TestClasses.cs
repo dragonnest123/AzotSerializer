@@ -48,13 +48,23 @@ public partial class ClassWithNestedObjects
 }
 
 [ByteSerializable]
-public partial class ClassWithCollection
+public partial class ClassWithList
 {
     public List<int>? List { get; set; }
-    // public List<object>? ListObjects { get; set; }
+}
+
+[ByteSerializable]
+public partial class ClassWithHashSet
+{
     public HashSet<SimpleClass>? HashSet { get; set; }
+}
+
+[ByteSerializable]
+public partial class ClassWithDictionary
+{
     public Dictionary<int, string>? Dictionary { get; set; }
 }
+
 
 public class ComplexClass
 {

@@ -1,7 +1,7 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
-namespace Serialization.RuntimeSerializers;
+namespace Serialization.RuntimeSerialization;
 
 internal static class TypeMetadata
 {
