@@ -17,6 +17,17 @@ public class ObjectSerializerTest
     }
     
     [Fact]
+    public void Serialize_ClassWithEnum()
+    {
+        var obj = ClassFactory.CreateClassWithEnum();
+    
+        var serialized = ObjectSerializer.Serialize(obj);
+        var deserialized = ObjectSerializer.Deserialize<ClassWithEnum>(serialized.ToArray());
+    
+        deserialized.Should().BeEquivalentTo(obj);
+    }
+    
+    [Fact]
     public void Serialize_ClassWithNestedObjects()
     {
         var c = ClassFactory.CreateClassWithNestedObjects();
@@ -139,5 +150,17 @@ public class ObjectSerializerTest
         var serialized = ObjectSerializer.Serialize(obj);
         var deserialized = ObjectSerializer.Deserialize<List<string?>>(serialized.ToArray());
         deserialized.Should().BeEquivalentTo(obj);
+    }
+    
+    [Fact]
+    public void Serialize_ComplexClass()
+    {
+        var obj = ClassFactory.CreateComplexClass();
+    
+        var serialized = ObjectSerializer.Serialize(obj);
+        var deserialized = ObjectSerializer.Deserialize<ComplexClass>(serialized.ToArray());
+    
+        deserialized.Should().BeEquivalentTo(obj, 
+            options => options.ComparingByMembers<NestedStruct>());
     }
 }

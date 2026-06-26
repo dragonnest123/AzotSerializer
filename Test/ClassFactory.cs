@@ -12,7 +12,14 @@ public static class ClassFactory
             Name = name,
             Age = age
         };
-
+    
+    public static ClassWithEnum CreateClassWithEnum()
+        => new ClassWithEnum
+        {
+            Day = DayOfWeek.Wednesday,
+            NullableDay = DayOfWeek.Friday
+        };
+    
     public static ClassWithNestedObjects CreateClassWithNestedObjects(
         NestedClass? nestedClass = null,
         NestedStruct? nestedStruct = null,
@@ -74,24 +81,34 @@ public static class ClassFactory
             ListObjects = list ?? [CreateSimpleClass(), CreateClassWithNestedObjects(), 123, "testString5132"]
         };
 
-    public static ComplexClass CreateComplexClass(
-        int id = 0, 
-        string? name = "ABC", 
-        int age = 100,
-        bool boolean = false,
-        ComplexClass.NestedEnum? e = ComplexClass.NestedEnum.EnumValue1,
-        NestedClass? nestedClass = null,
-        NestedStruct? nestedStruct = null)
-    {
-        return new ComplexClass
+    public static ComplexClass CreateComplexClass()
+        => new ComplexClass
         {
-            Id = id,
-            Name = name,
-            Age = age,
-            Boolean = boolean,
-            Enum = e,
-            Class = nestedClass ?? new NestedClass { Value = 123124 },
-            Struct = nestedStruct ??  new NestedStruct { Value = 5425132 }
+            Int = int.MaxValue,
+            UInt = uint.MaxValue,
+            Long = long.MaxValue,
+            ULong = ulong.MaxValue,
+            Short = short.MaxValue,
+            UShort = ushort.MaxValue,
+            Byte = byte.MaxValue,
+            SByte = sbyte.MaxValue,
+            Float = float.MaxValue,
+            Double = double.MaxValue,
+            Decimal = decimal.MaxValue,
+            Bool = true,
+            Char = 'S',
+            String = "hello world",
+            DateTime = DateTime.MaxValue,
+            TimeSpan = TimeSpan.MaxValue,
+            Enum = DayOfWeek.Sunday,
+            NullableEnum = null,
+            NullableInt = 42,
+            NullableString = null,
+            NestedClass = CreateSimpleClass(),
+            NestedStruct = new NestedStruct { Value = 999, Nested = new NestedClass { Value = 1 } },
+            List = [1, 2, 3, 4, 5],
+            Array = [10, 20, 30],
+            Dictionary = new Dictionary<int, string> { [1] = "one", [2] = "two" },
+            ValueTuple = (99, "tuple")
         };
-    }
 }

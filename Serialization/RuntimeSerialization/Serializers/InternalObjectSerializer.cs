@@ -130,7 +130,7 @@ internal static class InternalObjectSerializer
         if (type == typeof(string))      { serializer = (o, w) => w.WriteString((string)o);     return true; }
         if (type == typeof(DateTime))    { serializer = (o, w) => w.WriteDateTime((DateTime)o); return true; }
         if (type == typeof(TimeSpan))    { serializer = (o, w) => w.WriteTimeSpan((TimeSpan)o); return true; }
-
+        
         if (type.IsEnum)
         {
             var underlyingType = Enum.GetUnderlyingType(type);

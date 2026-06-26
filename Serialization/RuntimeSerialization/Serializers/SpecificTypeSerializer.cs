@@ -1,16 +1,12 @@
 using System.Buffers;
-using System.Collections;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq.Expressions;
-using Serialization.Extensions;
 
 namespace Serialization.RuntimeSerialization.Serializers;
 
 internal static class SpecificTypeSerializer
 {
-    private static readonly Dictionary<
-        Type, 
-        Func<Type, (Action<object, ArrayBufferWriter<byte>> Serializer, DeserializerDelegate Deserializer)>> 
+    private static readonly Dictionary<Type, 
+            Func<Type, (Action<object, ArrayBufferWriter<byte>> Serializer, DeserializerDelegate Deserializer)>> 
     _handlerFactories = new()
     {
         [typeof(KeyValuePair<,>)] = kvpType => (
