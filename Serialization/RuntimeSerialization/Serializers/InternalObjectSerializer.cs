@@ -139,8 +139,28 @@ internal static class InternalObjectSerializer
             return true;
         }
 
+        if (type.IsArray)
+        {
+            serializer = BuildArraySerializer(type);
+            return true;
+        }
+
         serializer = null;
         return false;
+    }
+
+    private static Action<object, ArrayBufferWriter<byte>> BuildArraySerializer(Type arrayType)
+    {
+        var elementType = arrayType.GetElementType()
+            ?? throw new Exception("Unknown array type");
+        
+        var elementSerializer = GetOrBuildSerializer(elementType);
+        var enumerableSerializer = BuildEnumerableSerializer(elementType, elementSerializer);
+        return (obj, writer) =>
+        {
+            writer.WriteInt32(((Array)obj).Length);
+            enumerableSerializer(obj, writer);
+        };
     }
 
     private static bool TryBuildCollectionSerializer(
@@ -155,35 +175,45 @@ internal static class InternalObjectSerializer
         
         var elementType = collectionType.GetGenericArguments()[0];
         var elementSerializer = GetOrBuildSerializer(elementType);
-        bool elementCanBeNull = !elementType.IsValueType || Nullable.GetUnderlyingType(elementType) != null;
 
         var countGetter = BuildCountPropertyDelegate(elementType);
+        var enumerableSerializer = BuildEnumerableSerializer(elementType, elementSerializer);
         serializer = (obj, writer) =>
         {
             writer.WriteInt32(countGetter(obj));
-
-            if (elementCanBeNull)
-            {
-                foreach (var element in (IEnumerable)obj)
-                {
-                    if (element is null)
-                    {
-                        writer.WriteByte(0);
-                        continue;
-                    }
-
-                    writer.WriteByte(1);
-                    elementSerializer(element, writer);
-                }
-            }
-            else
-            {
-                foreach (var element in (IEnumerable)obj)
-                    elementSerializer(element, writer);
-            }
+            enumerableSerializer(obj, writer);
         };
 
         return true;
+    }
+    
+    private static Action<object, ArrayBufferWriter<byte>> BuildEnumerableSerializer(
+        Type elementType,
+        Action<object, ArrayBufferWriter<byte>> elementSerializer)
+    {
+        bool canBeNull = TypeDataProvider.CanBeNull(elementType);
+    
+        if (!canBeNull)
+            return (obj, writer) =>
+            {
+                foreach (var element in (IEnumerable)obj)
+                    elementSerializer(element, writer);
+            };
+
+        return (obj, writer) =>
+        {
+            foreach (var element in (IEnumerable)obj)
+            {
+                if (element is null) 
+                { 
+                    writer.WriteByte(0); 
+                    continue; 
+                }
+                writer.WriteByte(1);
+                
+                elementSerializer(element, writer);
+            }
+        };
     }
 
     private static Func<object, int> BuildCountPropertyDelegate(Type elementType)
@@ -192,4 +222,4 @@ internal static class InternalObjectSerializer
 
         return MemberAccessor.BuildGetDelegate<int>(collectionType, "Count");
     }
-} 
+}

@@ -1,6 +1,6 @@
 namespace Test.RuntimeSerializers;
 
-public class StructsFactory
+public static class StructsFactory
 {
     public static UnmanagedStruct CreateUnmanagedStruct(
         int id = 0, 

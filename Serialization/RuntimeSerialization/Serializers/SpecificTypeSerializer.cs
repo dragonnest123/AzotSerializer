@@ -1,5 +1,7 @@
 using System.Buffers;
+using System.Collections;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq.Expressions;
 using Serialization.Extensions;
 
 namespace Serialization.RuntimeSerialization.Serializers;
@@ -13,9 +15,7 @@ internal static class SpecificTypeSerializer
     {
         [typeof(KeyValuePair<,>)] = kvpType => (
             BuildKeyValuePairSerializer(kvpType), 
-            BuildKeyValuePairDeserializer(kvpType))
-        
-        
+            BuildKeyValuePairDeserializer(kvpType)),
     };
     
     public static bool TryBuildSpecificTypeSerializer(

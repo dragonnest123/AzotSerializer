@@ -40,6 +40,7 @@ internal static class CodeAnalysisExtensions
                 SpecialType.System_Boolean    => "Bool",
                 SpecialType.System_Byte       => "Byte",
                 SpecialType.System_SByte      => "SByte",
+                SpecialType.System_Char       => "Char",
                 SpecialType.System_Int16      => "Int16",
                 SpecialType.System_UInt16     => "UInt16",
                 SpecialType.System_Int32      => "Int32",

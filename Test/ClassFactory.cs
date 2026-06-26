@@ -26,6 +26,24 @@ public static class ClassFactory
             RecordStruct = nestedRecordStruct ?? new NestedRecordStruct { Value = 456, Nested = new NestedStruct { Value = 3} }
         };
 
+    public static ClassWithArray CreateClassWithArray(int[]? array = null)
+        => new ClassWithArray
+        {
+            Array = array ?? [123, 4124, 5142, 14124, 2, 2, 2, 3414, 1, 12]
+        };
+    
+    public static ClassWithJaggedArray CreateClassWithJaggedArray()
+        => new ClassWithJaggedArray
+        {
+            JaggedArray = 
+            [
+                [new NestedClass { Value = 1 }, new NestedClass { Value = 2 }],
+                [3, 4, 5, 6, 512413, 351341, 45132, 42514],
+                ["asdasd", "dgfadkasd", "dfkgdkgfdkfg", "adsaksdkasd"],
+                [CreateClassWithArray(), CreateClassWithList(), CreateClassWithDictionary()]
+            ]
+        };
+
     public static ClassWithList CreateClassWithList(List<int>? list = null)
         => new ClassWithList
         {
@@ -48,6 +66,12 @@ public static class ClassFactory
                 [3] = "three",
                 [100] = "hundred"
             }
+        };
+
+    public static ClassWithListObjects CreateClassWithListObjects(List<object>? list = null)
+        => new ClassWithListObjects
+        {
+            ListObjects = list ?? [CreateSimpleClass(), CreateClassWithNestedObjects(), 123, "testString5132"]
         };
 
     public static ComplexClass CreateComplexClass(

@@ -47,6 +47,16 @@ public partial class ClassWithNestedObjects
     public NestedRecordStruct? RecordStruct { get; set; }
 }
 
+public partial class ClassWithArray
+{
+    public int[]? Array { get; set; }
+}
+
+public partial class ClassWithJaggedArray
+{
+    public object[][]? JaggedArray { get; set; }
+}
+
 [ByteSerializable]
 public partial class ClassWithList
 {
@@ -63,6 +73,11 @@ public partial class ClassWithHashSet
 public partial class ClassWithDictionary
 {
     public Dictionary<int, string>? Dictionary { get; set; }
+}
+
+public partial class ClassWithListObjects
+{
+    public List<object>? ListObjects { get; set; }
 }
 
 

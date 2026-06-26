@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Collections;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
@@ -148,6 +149,12 @@ internal static class InternalObjectDeserializer
             return true;
         }
 
+        if (type.IsArray)
+        {
+            deserializer = BuildArrayDeserializer(type);
+            return true;
+        }
+
         deserializer = null;
         return false;
     }
@@ -164,32 +171,27 @@ internal static class InternalObjectDeserializer
 
         var elementType = collectionType.GetGenericArguments()[0];
         var elementDeserializer = GetOrBuildDeserializer(elementType);
-        bool elementCanBeNull = !elementType.IsValueType || Nullable.GetUnderlyingType(elementType) != null;
+        bool elementCanBeNull = TypeDataProvider.CanBeNull(elementType);
         
-        var addItem = BuildAddDelegate(elementType);
+        var addItem = BuildCollectionAddDelegate(elementType);
 
         deserializer = (ref buffer) =>
         {
+            int count = buffer.ReadInt32();
             var collection = Activator.CreateInstance(type)!;
 
-            int count = buffer.ReadInt32();
-            for (int i = 0; i < count; i++)
+            if (elementCanBeNull)
             {
-                object? item;
-
-                if (elementCanBeNull)
+                for (int i = 0; i < count; i++)
                 {
                     bool hasValue = buffer.ReadBool();
-                    item = hasValue
-                        ? elementDeserializer(ref buffer)
-                        : null;
+                    addItem(collection, hasValue ? elementDeserializer(ref buffer) : null);
                 }
-                else
-                {
-                    item = elementDeserializer(ref buffer);
-                }
-
-                addItem(collection, item);
+            }
+            else
+            {
+                for (int i = 0; i < count; i++)
+                    addItem(collection, elementDeserializer(ref buffer));
             }
 
             return collection;
@@ -198,7 +200,38 @@ internal static class InternalObjectDeserializer
         return true;
     }
     
-    private static Action<object, object?> BuildAddDelegate(Type elementType)
+    private static DeserializerDelegate BuildArrayDeserializer(Type arrayType)
+    {
+        var elementType = arrayType.GetElementType()
+                          ?? throw new Exception("Unknown array type");
+        
+        var elementDeserializer = GetOrBuildDeserializer(elementType);
+        bool elementCanBeNull = TypeDataProvider.CanBeNull(elementType);
+
+        return (ref buffer) =>
+        {
+            int length = buffer.ReadInt32();
+            var array = Array.CreateInstance(elementType, length);
+            
+            if (elementCanBeNull)
+            {
+                for (int i = 0; i < length; i++)
+                {
+                    bool hasValue = buffer.ReadBool();
+                    array.SetValue(hasValue ? elementDeserializer(ref buffer) : null, i);
+                }
+            }
+            else
+            {
+                for (int i = 0; i < length; i++)
+                    array.SetValue(elementDeserializer(ref buffer), i);
+            }
+
+            return array;
+        };
+    }
+    
+    private static Action<object, object?> BuildCollectionAddDelegate(Type elementType)
     {
         var collectionParam = Expression.Parameter(typeof(object));
         var itemParam = Expression.Parameter(typeof(object));
