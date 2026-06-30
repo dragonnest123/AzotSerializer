@@ -2,7 +2,7 @@ using Microsoft.CodeAnalysis;
 
 namespace AzotSerializer;
 
-public static class SerializationDataProvider
+internal static class SerializationDataProvider
 {
     public static ISymbol[] GetTargetSerializationMembers(INamedTypeSymbol namedType)
     {

@@ -56,6 +56,18 @@ public static class ClassFactory
         {
             List = list ?? [234, 123, 7, 35235, 1236, 24034, 23124, 6234, 4581832, 1281300]
         };
+    
+    public static ClassWithNestedCollection CreateClassWithNestedCollection(List<List<int>>? collection = null)
+        => new ClassWithNestedCollection
+        {
+            ListOfLists = collection ??
+            [
+                [1, 2, 3],
+                [4, 5],
+                [],
+                [6, 7, 8, 9]
+            ]
+        };
 
     public static ClassWithHashSet CreateClassWithHashSet(HashSet<SimpleClass>? set = null)
         => new ClassWithHashSet

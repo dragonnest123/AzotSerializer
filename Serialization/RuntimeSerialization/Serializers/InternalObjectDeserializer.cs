@@ -7,7 +7,7 @@ using Serialization.Extensions;
 
 namespace Serialization.RuntimeSerialization.Serializers;
 
-internal delegate object? DeserializerDelegate(ref ReadOnlySpan<byte> buffer);
+public delegate object? DeserializerDelegate(ref ReadOnlySpan<byte> buffer);
 
 internal static class InternalObjectDeserializer
 {

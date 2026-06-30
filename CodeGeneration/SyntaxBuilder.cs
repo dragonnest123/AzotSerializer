@@ -3,12 +3,13 @@ using AzotSerializer.Extensions;
 
 namespace AzotSerializer;
 
-public class SyntaxBuilder
+internal class SyntaxBuilder
 {
     private const string Tabulation = "    ";
         
     private readonly StringBuilder _builder = new StringBuilder();
     private string _indent;
+    private int _varCount;
     
     public SyntaxBuilder(string initialIndent = "")
     {
@@ -23,12 +24,16 @@ public class SyntaxBuilder
     public static string CastTo(string variable, string typeToCast)
         => $"(({typeToCast}){variable})";
 
+    public string NextVar(string varPrefix)
+        => $"{varPrefix}{_varCount++}";
+    
     public SyntaxBuilder AppendLine(string line)
     {
         _builder.AppendLineWithIndent(_indent, line);
 
         return this;
     }
+    
 
     public SyntaxBuilder Expression(string line)
     {

@@ -10,6 +10,7 @@ public partial class SimpleClass
     public int? Age { get; set; }
 }
 
+[ByteSerializable]
 public partial class ClassWithEnum
 {
     public DayOfWeek Day { get; set; }
@@ -53,11 +54,13 @@ public partial class ClassWithNestedObjects
     public NestedRecordStruct? RecordStruct { get; set; }
 }
 
+[ByteSerializable]
 public partial class ClassWithArray
 {
     public int[]? Array { get; set; }
 }
 
+[ByteSerializable]
 public partial class ClassWithJaggedArray
 {
     public object[][]? JaggedArray { get; set; }
@@ -67,6 +70,12 @@ public partial class ClassWithJaggedArray
 public partial class ClassWithList
 {
     public List<int>? List { get; set; }
+}
+
+[ByteSerializable]
+public partial class ClassWithNestedCollection
+{
+    public List<List<int>>? ListOfLists { get; set; }
 }
 
 [ByteSerializable]
@@ -81,6 +90,7 @@ public partial class ClassWithDictionary
     public Dictionary<int, string>? Dictionary { get; set; }
 }
 
+[ByteSerializable]
 public partial class ClassWithListObjects
 {
     public List<object>? ListObjects { get; set; }

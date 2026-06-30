@@ -1,3 +1,4 @@
+using AzotSerializer.Extensions;
 using Microsoft.CodeAnalysis;
 
 namespace AzotSerializer;
@@ -26,12 +27,12 @@ public static class PrimitiveSupportedTypes
         SpecialType.System_Single,
         SpecialType.System_Double,
         SpecialType.System_Decimal,
-        SpecialType.System_String
+        SpecialType.System_String,
     ];
     
     public static bool IsSupported(ITypeSymbol type)
     {
-        return _primitiveTypes.Contains(type.SpecialType);
+        return type.IsEnum() || _primitiveTypes.Contains(type.SpecialType);
     }
 }
 

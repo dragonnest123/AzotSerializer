@@ -9,6 +9,7 @@ public partial class User
     public string Name { get; set; }
     public string Email { get; set; }
     public KeyValuePair<int, string> A { get; set; }
+    public string[][] Array { get; set; }
 
     public User(int id, string name, string email)
     {
@@ -24,10 +25,4 @@ public partial class User
     {
         
     }
-}
-
-
-public class MiniUser
-{
-    
 }

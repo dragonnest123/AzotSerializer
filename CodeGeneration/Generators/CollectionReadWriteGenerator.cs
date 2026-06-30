@@ -1,4 +1,3 @@
-using AzotSerializer.Extensions;
 using Microsoft.CodeAnalysis;
 
 namespace AzotSerializer.Generators;
@@ -14,7 +13,7 @@ internal static class CollectionReadWriteGenerator
             return false;
         
         var elementType = collectionInterface.TypeArguments[0];
-        var enumeratorVar = "enumerator";
+        var enumeratorVar = builder.NextVar("enumerator");
         
         builder
             .Expression($"writer.WriteInt32({collectionVar}.Count)")
@@ -27,12 +26,6 @@ internal static class CollectionReadWriteGenerator
 
     public static bool TryGenerateReadForMember(string collectionVar, ITypeSymbol collection, SyntaxBuilder builder)
     {
-        if (collection is not INamedTypeSymbol namedType)
-        {
-            builder.AppendLine("member is not INamedTypeSymbol");
-            return false;
-        }
-
         var collectionInterface = collection.AllInterfaces
             .FirstOrDefault(x => x.OriginalDefinition.ToDisplayString() == CollectionSupportedTypes.CollectionInterface);
         
@@ -45,27 +38,20 @@ internal static class CollectionReadWriteGenerator
             .ToDisplayString();
         var casted = SyntaxBuilder.CastTo(collectionVar, collectionInterface.ToDisplayString());
         
+        var countVar = builder.NextVar("count");
+        var cycleVar = builder.NextVar("i");
+        
         builder
-            .Initialize("int", "count", "buffer.ReadInt32()")
-            .Assign(collectionVar, $"new {collectionTypeName}(count)")
-            .For("int i = 0", "i < count", "i++",
+            .Initialize("int", countVar, "buffer.ReadInt32()")
+            .Assign(collectionVar, $"new {collectionTypeName}({countVar})")
+            .For($"int {cycleVar} = 0", $"{cycleVar} < {countVar}", $"{cycleVar}++",
                 body =>
                 {
-                    const string readVar = "collectionElement";
+                    string readVar = builder.NextVar("collectionElement");
                     ReadWriteGenerator.GenerateReadForType(readVar, elementType, body);
                     body.Expression($"{casted}.Add({readVar})");
                 });
 
         return true;
-    }
-}
-
-public class ABC
-{
-    private Dictionary<int, string> _dictionary;
-
-    public void A()
-    {
-        ((ICollection<KeyValuePair<int, string>>)_dictionary).Add(new KeyValuePair<int, string>(1, "ABC"));
     }
 }

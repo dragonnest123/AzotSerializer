@@ -1,5 +1,4 @@
 ﻿using FluentAssertions;
-using Xunit.Abstractions;
 
 namespace Test;
 
@@ -29,25 +28,86 @@ public class GeneratedSerializerTest
     }
     
     [Fact]
+    public void Serialize_ClassWithEnum()
+    {
+        var obj = ClassFactory.CreateClassWithEnum();
+    
+        var serialized = obj.Serialize();
+        var deserialized = ClassWithEnum.Deserialize(ref serialized);
+    
+        deserialized.Should().BeEquivalentTo(obj);
+    }
+    
+    [Fact]
+    public void Serialize_ClassWithArray()
+    {
+        var original = ClassFactory.CreateClassWithArray();
+        var serialized = original.Serialize();
+        var deserialized = ClassWithArray.Deserialize(ref serialized);
+        
+        deserialized.Should().BeEquivalentTo(original);
+        
+        var classWithJaggedArray = ClassFactory.CreateClassWithJaggedArray();
+        var serializedJaggedArray = classWithJaggedArray.Serialize();
+        var deserializedJaggedArray = ClassWithJaggedArray.Deserialize(ref serializedJaggedArray);
+        
+        classWithJaggedArray.Should().BeEquivalentTo(deserializedJaggedArray);  
+    }
+
+    [Fact]
+    public void Serialize_ClassWithArray_EmptyArray()
+    {
+        var original = ClassFactory.CreateClassWithArray([]);
+        
+        var serialized = original.Serialize();
+        var deserialized = ClassWithArray.Deserialize(ref serialized);
+        
+        deserialized.Array.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Serialize_ClassWithArray_NullArray()
+    {
+        var original = new ClassWithArray { Array = null };
+        
+        var serialized = original.Serialize();
+        var deserialized = ClassWithArray.Deserialize(ref serialized);
+        
+        deserialized.Array.Should().BeNull();
+    }
+    
+    [Fact]
     public void Serialize_ClassWithCollection()
     {
         var classWithList = ClassFactory.CreateClassWithList();
-        var classWithHashSet = ClassFactory.CreateClassWithHashSet();
-        var classWithDictionary = ClassFactory.CreateClassWithDictionary();
-        
         var serializedList = classWithList.Serialize();
-        var serializedHashSet = classWithHashSet.Serialize();
-        var serializedDictionary = classWithDictionary.Serialize();
-        
         var deserializedList = ClassWithList.Deserialize(ref serializedList);
-        var deserializedHashSet = ClassWithHashSet.Deserialize(ref serializedHashSet);
-        var deserializedDictionary = ClassWithDictionary.Deserialize(ref serializedDictionary);
-
+        
         classWithList.Should().BeEquivalentTo(deserializedList);
+        
+        var classWithHashSet = ClassFactory.CreateClassWithHashSet();
+        var serializedHashSet = classWithHashSet.Serialize();
+        var deserializedHashSet = ClassWithHashSet.Deserialize(ref serializedHashSet);
+        
         classWithHashSet.Should().BeEquivalentTo(deserializedHashSet);
+        
+        var classWithDictionary = ClassFactory.CreateClassWithDictionary();
+        var serializedDictionary = classWithDictionary.Serialize();
+        var deserializedDictionary = ClassWithDictionary.Deserialize(ref serializedDictionary);
+        
         classWithDictionary.Should().BeEquivalentTo(deserializedDictionary);
- 
-        //TODO: попробовать другие коллекции помимо List, попробовать не примитвные объекты в качестве элементов коллекции
-        //TODO: в частности интересно что будет с object
+        
+        var classWithListObjects = ClassFactory.CreateClassWithListObjects();
+        var serializedListObjects = classWithListObjects.Serialize();
+        var deserializedListObjects = ClassWithListObjects.Deserialize(ref serializedListObjects);
+        
+        classWithListObjects.Should().BeEquivalentTo(deserializedListObjects);
+        
+        var classWithNestedCollection = ClassFactory.CreateClassWithNestedCollection();
+
+        var serializedClassWithNestedCollection = classWithNestedCollection.Serialize();
+        var deserializedClassWithNestedCollection = ClassWithNestedCollection.Deserialize(ref serializedClassWithNestedCollection);
+
+        deserializedClassWithNestedCollection.Should().BeEquivalentTo(classWithNestedCollection);
     }
 }

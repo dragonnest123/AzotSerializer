@@ -44,6 +44,7 @@ internal static class ReadWriteGenerator
 
         if (PrimitiveTypeReadWriteGenerator.TryGenerateWriteForMember(memberVar, notNullable, builder) ||
             WellKnownTypesReadWriteGenerator.TryGenerateWriteForMember(memberVar, notNullable, builder) ||
+            ArrayReadWriteGenerator.TryGenerateWriteForMember(memberVar, notNullable, builder) ||
             CollectionReadWriteGenerator.TryGenerateWriteForMember(memberVar, notNullable, builder))
         {
             return;
@@ -58,6 +59,7 @@ internal static class ReadWriteGenerator
 
         if (PrimitiveTypeReadWriteGenerator.TryGenerateReadForMember(memberVar, notNullable, builder) ||
             WellKnownTypesReadWriteGenerator.TryGenerateReadForMember(memberVar, notNullable, builder) ||
+            ArrayReadWriteGenerator.TryGenerateReadForMember(memberVar, notNullable, builder) ||
             CollectionReadWriteGenerator.TryGenerateReadForMember(memberVar, notNullable, builder))
         {
             return;

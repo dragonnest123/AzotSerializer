@@ -8,7 +8,7 @@ internal class MemberAccessor
     public required Type Type { get; init; }
     public required Func<object, object?> Getter { get; init; }
     public required Action<object, object?> Setter { get; init; }
-
+    
     public static MemberAccessor Create(PropertyInfo property)
         => new() 
         {

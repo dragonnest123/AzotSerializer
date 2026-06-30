@@ -44,6 +44,7 @@ internal static class TypeSerializationGenerator
                  using System.Buffers.Binary;
                  using System.Text;
                  using Serialization.Extensions;
+                 using Serialization.RuntimeSerialization.Serializers;
 
                  namespace {{@namespace}};
 
@@ -51,7 +52,7 @@ internal static class TypeSerializationGenerator
                  {
                      {{constructor}}
                  
-                     public void Serialize(IBufferWriter<byte> writer)
+                     public void Serialize(ArrayBufferWriter<byte> writer)
                      {
                  {{EmitSerializeBody(typeMembers)}}
                      }
