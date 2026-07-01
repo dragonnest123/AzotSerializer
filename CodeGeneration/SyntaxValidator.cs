@@ -90,5 +90,5 @@ internal static class SyntaxValidator
 
     private static bool HasSerializationAttribute(INamedTypeSymbol namedTypeSymbol)
         => namedTypeSymbol.GetAttributes().Any(a =>
-            a.AttributeClass?.ToDisplayString() == GeneratorRegister.MetadataAttributeName);
+            a.AttributeClass?.ToDisplayString() == GeneratorRegister.SerializationAttributeName);
 }

@@ -96,6 +96,7 @@ public partial class ClassWithListObjects
     public List<object>? ListObjects { get; set; }
 }
 
+[ByteSerializable]
 public partial class ComplexClass
 {
     public int Int { get; set; }

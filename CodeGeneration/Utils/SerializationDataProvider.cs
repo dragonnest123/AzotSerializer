@@ -1,6 +1,6 @@
 using Microsoft.CodeAnalysis;
 
-namespace AzotSerializer;
+namespace AzotSerializer.Utils;
 
 internal static class SerializationDataProvider
 {
@@ -13,15 +13,21 @@ internal static class SerializationDataProvider
                 if (symbol is IPropertySymbol prop)
                     return !symbol.IsImplicitlyDeclared
                            && symbol.DeclaredAccessibility == Accessibility.Public
-                           && prop.SetMethod is not null;
+                           && prop.SetMethod is not null
+                           && !HasIgnoreAttribute(prop.SetMethod);
     
                 if (symbol is IFieldSymbol field)
                     return !symbol.IsImplicitlyDeclared
                            && symbol.DeclaredAccessibility == Accessibility.Public
-                           && !field.IsReadOnly;
+                           && !field.IsReadOnly
+                           && !HasIgnoreAttribute(field);
     
                 return false;
             })
             .ToArray();
     }
+    
+    private static bool HasIgnoreAttribute(ISymbol member)
+        => member.GetAttributes().Any(a =>
+            a.AttributeClass?.ToDisplayString() == GeneratorRegister.IgnoreSerializationAttributeName);
 }

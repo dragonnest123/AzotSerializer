@@ -1,4 +1,5 @@
 using AzotSerializer.Extensions;
+using AzotSerializer.Utils;
 using Microsoft.CodeAnalysis;
 
 namespace AzotSerializer;
@@ -27,7 +28,8 @@ public static class PrimitiveSupportedTypes
         SpecialType.System_Single,
         SpecialType.System_Double,
         SpecialType.System_Decimal,
-        SpecialType.System_String,
+        SpecialType.System_Char,
+        SpecialType.System_String
     ];
     
     public static bool IsSupported(ITypeSymbol type)
@@ -54,19 +56,25 @@ public static class CollectionSupportedTypes
 
 public static class WellKnownSupportedTypes
 {
-    public const string DateTime = "System.DateTime";
-    public const string TimeSpan = "System.TimeSpan";
-    public const string KeyValuePair = "System.Collections.Generic.KeyValuePair<TKey, TValue>";
-    
-    private static readonly HashSet<string> _miscellaneousTypes = 
+    public static readonly TypeName DateTime = new TypeName("System", "DateTime");
+    public static readonly TypeName TimeSpan = new TypeName("System", "TimeSpan");
+    public static readonly TypeName ValueTuple = new TypeName("System", "ValueTuple");
+    public static readonly TypeName KeyValuePair = new TypeName("System.Collections.Generic", "KeyValuePair");
+
+    private static readonly HashSet<TypeName> _miscellaneousTypes =
     [
         DateTime,
         TimeSpan,
+        ValueTuple,
         KeyValuePair
     ];
     
+    
     public static bool IsSupported(ITypeSymbol type)
     {
-        return _miscellaneousTypes.Contains(type.OriginalDefinition.ToDisplayString());
+        if (type is not INamedTypeSymbol namedType)
+            return false;
+        
+        return _miscellaneousTypes.Contains(namedType.GetTypeName());
     }
 }

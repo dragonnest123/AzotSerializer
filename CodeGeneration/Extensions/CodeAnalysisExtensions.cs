@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using AzotSerializer.Utils;
 using Microsoft.CodeAnalysis;
 
 namespace AzotSerializer.Extensions;
@@ -68,6 +69,16 @@ internal static class CodeAnalysisExtensions
                 IFieldSymbol f    => f.Type,
                 _ => null
             };
+        }
+    }
+
+    extension(INamedTypeSymbol namedTypeSymbol)
+    {
+        public TypeName GetTypeName()
+        {
+            return new TypeName(
+                namedTypeSymbol.ContainingNamespace.ToDisplayString(),
+                namedTypeSymbol.Name);
         }
     }
 }

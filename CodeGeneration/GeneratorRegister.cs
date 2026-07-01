@@ -7,12 +7,13 @@ namespace AzotSerializer;
 [Generator(LanguageNames.CSharp)]
 internal class GeneratorRegister : IIncrementalGenerator
 {
-    public const string MetadataAttributeName = "Serialization.ByteSerializableAttribute";
+    public const string SerializationAttributeName = "Serialization.ByteSerializableAttribute";
+    public const string IgnoreSerializationAttributeName = "Serialization.ByteIgnoreAttribute";
     
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         var typeDeclarations = context.SyntaxProvider.ForAttributeWithMetadataName(
-            MetadataAttributeName,
+            SerializationAttributeName,
             predicate: static (node, _) => IsSyntaxTarget(node),
             transform: static (context, _) => (TypeDeclarationSyntax)context.TargetNode);
         

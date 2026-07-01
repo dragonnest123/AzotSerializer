@@ -110,4 +110,15 @@ public class GeneratedSerializerTest
 
         deserializedClassWithNestedCollection.Should().BeEquivalentTo(classWithNestedCollection);
     }
+
+    [Fact]
+    public void Serialize_ComplexClass()
+    {
+        var complexClass = ClassFactory.CreateComplexClass();
+        var serialized = complexClass.Serialize();
+        var deserialized = ComplexClass.Deserialize(ref serialized);
+        
+        complexClass.Should().BeEquivalentTo(deserialized, options =>
+            options.ComparingByMembers<NestedStruct>());
+    }
 }

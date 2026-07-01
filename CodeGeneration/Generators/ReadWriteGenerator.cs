@@ -13,7 +13,7 @@ internal static class ReadWriteGenerator
                     body.Expression("writer.WriteByte(1)");
                     GenerateWrite(memberVar, member, body);
                 })
-                .Else(b => b.Expression("writer.WriteByte(0)"));
+                .Else(b => b.Expression("writer.WriteByte(0)")); 
         else
             GenerateWrite(memberVar, member, builder);
     }

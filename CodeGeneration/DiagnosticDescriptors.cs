@@ -6,6 +6,9 @@ internal static class DiagnosticDescriptors
 {
     private const string Category = "Generation";
     
+    public static readonly DiagnosticDescriptor Debug = new(
+        "DBG001", "Debug", "{0}", "Debug", DiagnosticSeverity.Warning, true);
+    
     public static readonly DiagnosticDescriptor MustBePartial = new(
         id: "AZOTGEN001",
         title: "Serializable object must be partial",
